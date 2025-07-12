@@ -1,0 +1,1768 @@
+1
+00:00:02,127 --> 00:00:04,921
+In this lesson, you will learn basic concepts about
+
+2
+00:00:02,127 --> 00:00:04,921
+本課程將介紹關於
+
+3
+00:00:04,921 --> 00:00:09,009
+online reinforcement learning, including the method, common use cases
+
+4
+00:00:04,921 --> 00:00:09,009
+線上強化學習，包括方法、常見應用場景
+
+5
+00:00:09,342 --> 00:00:12,345
+and principles for high quality data curation in RL.
+
+6
+00:00:09,342 --> 00:00:12,345
+以及強化學習中高品質資料策展的原則。
+
+7
+00:00:13,054 --> 00:00:14,097
+Let's dive in.
+
+8
+00:00:13,054 --> 00:00:14,097
+讓我們開始深入探討。
+
+9
+00:00:14,097 --> 00:00:15,015
+Let's first
+
+10
+00:00:14,097 --> 00:00:15,015
+讓我們先
+
+11
+00:00:15,015 --> 00:00:16,056
+take a look at a slight difference in reinforcement learning for language models
+
+12
+00:00:15,015 --> 00:00:16,056
+來看看語言模型在強化學習中的一個細微差異
+
+13
+00:00:16,056 --> 00:00:16,433
+take a look at a slight difference in reinforcement learning for language models
+
+14
+00:00:16,056 --> 00:00:16,433
+來看看語言模型在強化學習中的一個細微差異
+
+15
+00:00:16,433 --> 00:00:18,977
+take a look at a slight difference in reinforcement learning for language models
+
+16
+00:00:16,433 --> 00:00:18,977
+來看看語言模型在強化學習中的一個細微差異
+
+17
+00:00:19,394 --> 00:00:22,397
+in terms of online learning versus offline learning.
+
+18
+00:00:19,394 --> 00:00:22,397
+就線上學習與離線學習而言
+
+19
+00:00:22,480 --> 00:00:26,359
+In online learning, usually the model learns by generating
+
+20
+00:00:22,480 --> 00:00:26,359
+在線上學習中，模型通常透過即時生成
+
+21
+00:00:26,359 --> 00:00:30,530
+new responses in real time, iteratively collects new responses
+
+22
+00:00:26,359 --> 00:00:30,530
+新回應來學習，迭代式地收集新回應
+
+23
+00:00:30,655 --> 00:00:34,117
+and their corresponding rewards, and use that response and reward
+
+24
+00:00:30,655 --> 00:00:34,117
+及其對應的獎勵，並利用這些回應與獎勵
+
+25
+00:00:34,367 --> 00:00:38,246
+to update its weights and enforce new responses
+
+26
+00:00:34,367 --> 00:00:38,246
+更新其權重並強制產生新的回應
+
+27
+00:00:38,580 --> 00:00:41,541
+as the model further learns and updates itself.
+
+28
+00:00:38,580 --> 00:00:41,541
+隨著模型進一步學習並自我更新。
+
+29
+00:00:41,541 --> 00:00:45,295
+While in contrast, in offline learning, the model
+
+30
+00:00:41,541 --> 00:00:45,295
+相較之下，在離線學習中，模型
+
+31
+00:00:45,295 --> 00:00:50,295
+learns purely from a pre-collected prompt response or reward tuple,
+
+32
+00:00:45,295 --> 00:00:50,295
+僅從預先收集的提示回應或獎勵元組中學習。
+
+33
+00:00:51,426 --> 00:00:55,221
+and there will be no fresh responses generated during the learning process.
+
+34
+00:00:51,426 --> 00:00:55,221
+且在學習過程中不會產生新的回應。
+
+35
+00:00:55,472 --> 00:00:58,808
+By online reinforcement learning we usually refers to reinforcement
+
+36
+00:00:55,472 --> 00:00:58,808
+我們通常所說的線上強化學習指的是強化
+
+37
+00:00:58,808 --> 00:01:01,811
+learning method and in the online learning setting.
+
+38
+00:00:58,808 --> 00:01:01,811
+學習方法以及線上學習環境中的應用。
+
+39
+00:01:01,811 --> 00:01:01,895
+fast learning method and in the online learning setting.
+
+40
+00:01:01,811 --> 00:01:01,895
+快速學習方法以及線上學習環境中的應用。
+
+41
+00:01:01,895 --> 00:01:02,812
+Let's give a slight more zoomed-in overview on how online reinforcement learning works.
+
+42
+00:01:01,895 --> 00:01:02,812
+讓我們稍微更深入地概述一下線上強化學習是如何運作的。
+
+43
+00:01:02,812 --> 00:01:06,733
+Let's give a slight more zoomed-in overview on how online reinforcement learning works.
+
+44
+00:01:02,812 --> 00:01:06,733
+讓我們稍微更深入地概述一下線上強化學習是如何運作的。
+
+45
+00:01:07,108 --> 00:01:12,108
+It's usually working by letting the model explore better responses by itself.
+
+46
+00:01:07,108 --> 00:01:12,108
+它通常是透過讓模型自行探索更好的回應來運作。
+
+47
+00:01:12,530 --> 00:01:15,533
+So usually we can start from a batch of prompts here,
+
+48
+00:01:12,530 --> 00:01:15,533
+所以通常我們可以從這裡的一批提示開始，
+
+49
+00:01:15,742 --> 00:01:19,162
+send that to an existing language model, and the language model
+
+50
+00:01:15,742 --> 00:01:19,162
+將這段文字傳送至現有的語言模型，該語言模型
+
+51
+00:01:19,162 --> 00:01:22,290
+will generate our corresponding responses based on the prompts here.
+
+52
+00:01:19,162 --> 00:01:22,290
+會根據此處的提示生成對應的回應。
+
+53
+00:01:22,707 --> 00:01:25,710
+After we get the prompts and responses, pairs, we'll send
+
+54
+00:01:22,707 --> 00:01:25,710
+當我們取得提示與回應的配對後，會將其傳送至
+
+55
+00:01:25,710 --> 00:01:29,839
+that to a reward function where the reward function is responsible
+
+56
+00:01:25,710 --> 00:01:29,839
+獎勵函數，該函數負責
+
+57
+00:01:29,839 --> 00:01:33,635
+for labeling a reward for each of the prompt and response.
+
+58
+00:01:29,839 --> 00:01:33,635
+用於標記每個提示與回應的獎勵值。
+
+59
+00:01:34,052 --> 00:01:37,806
+Then we got a tuple of prompts, responses, and rewards.
+
+60
+00:01:34,052 --> 00:01:37,806
+接著我們會得到一組包含提示、回應與獎勵的元組。
+
+61
+00:01:38,098 --> 00:01:41,851
+We will use that to update the language model. And here,
+
+62
+00:01:38,098 --> 00:01:41,851
+我們將用這些資料來更新語言模型。而在這裡，
+
+63
+00:01:42,018 --> 00:01:42,477
+the language model update can use different elements.
+
+64
+00:01:42,018 --> 00:01:42,477
+語言模型的更新可以採用不同演算法。
+
+65
+00:01:42,477 --> 00:01:44,145
+the language model update can use different elements.
+
+66
+00:01:42,477 --> 00:01:44,145
+語言模型的更新可以使用不同的元素。
+
+67
+00:01:44,145 --> 00:01:44,813
+the language model update can use different elements.
+
+68
+00:01:44,145 --> 00:01:44,813
+語言模型的更新可以使用不同的元素。
+
+69
+00:01:45,105 --> 00:01:45,480
+In this lesson we'll go over two of them, which is proximal policy
+
+70
+00:01:45,105 --> 00:01:45,480
+在這堂課中，我們將介紹其中兩種方法，也就是近端策略
+
+71
+00:01:45,480 --> 00:01:46,272
+In this lesson we'll go over two of them, which is proximal policy
+
+72
+00:01:45,480 --> 00:01:46,272
+在這堂課中，我們將介紹其中兩種方法，也就是近端策略
+
+73
+00:01:46,272 --> 00:01:49,901
+In this lesson we'll go over two of them, which is proximal policy
+
+74
+00:01:46,272 --> 00:01:49,901
+在這堂課中，我們將介紹其中兩種方法，也就是近端策略
+
+75
+00:01:49,901 --> 00:01:54,901
+optimization or PPO and group relative policy optimization or GRPO.
+
+76
+00:01:49,901 --> 00:01:54,901
+優化（PPO）以及群組相對策略優化（GRPO）。
+
+77
+00:01:54,906 --> 00:01:54,948
+optimization or PPO and group relative policy optimization or appeal.
+
+78
+00:01:54,906 --> 00:01:54,948
+優化（PPO）以及群組相對策略優化（GRPO）。
+
+79
+00:01:54,948 --> 00:01:57,909
+So one thing I want to highlight here is about different
+
+80
+00:01:54,948 --> 00:01:57,909
+這裡我想特別強調的是關於不同的
+
+81
+00:01:57,909 --> 00:02:01,329
+choices of reward function in online reinforcement learning.
+
+82
+00:01:57,909 --> 00:02:01,329
+線上強化學習中的獎勵函數選擇
+
+83
+00:02:01,663 --> 00:02:04,374
+So the first option here could be a trained
+
+84
+00:02:01,663 --> 00:02:04,374
+第一個選項可以是經過訓練的
+
+85
+00:02:04,374 --> 00:02:09,374
+reward model. Where you can have multiple responses generated by the model
+
+86
+00:02:04,374 --> 00:02:09,374
+獎勵模型。你可以讓模型生成多個回應
+
+87
+00:02:09,461 --> 00:02:13,508
+or collected by different sources and then judged by a human.
+
+88
+00:02:09,461 --> 00:02:13,508
+或從不同來源收集，然後由人工進行評判
+
+89
+00:02:13,800 --> 00:02:17,637
+And the human will say I would prefer one response over the other.
+
+90
+00:02:13,800 --> 00:02:17,637
+人類會表示他們偏好其中一種回應勝過另一種。
+
+91
+00:02:17,929 --> 00:02:20,807
+Then during the training process, we'll have a reward model.
+
+92
+00:02:17,929 --> 00:02:20,807
+接著在訓練過程中，我們會建立一個獎勵模型。
+
+93
+00:02:20,807 --> 00:02:24,769
+Just ideally trained from this data that calculates a rewards
+
+94
+00:02:20,807 --> 00:02:24,769
+理想情況下，這個模型會根據這些數據來計算獎勵值
+
+95
+00:02:25,186 --> 00:02:26,563
+are for each of the summaries.
+
+96
+00:02:25,186 --> 00:02:26,563
+針對每一份摘要進行評分。
+
+97
+00:02:26,563 --> 00:02:30,733
+And we can design a loss such that, as calculate based on the rewards
+
+98
+00:02:26,563 --> 00:02:30,733
+我們可以設計一個損失函數，根據獎勵來計算
+
+99
+00:02:30,900 --> 00:02:35,900
+and the human label and the loss here, which is a log of the sigmoid function
+
+100
+00:02:30,900 --> 00:02:35,900
+以及這裡的人類標籤和損失函數，也就是兩個獎勵差異的
+
+101
+00:02:36,156 --> 00:02:39,659
+of the two reward difference can be used to update the reward model.
+
+102
+00:02:36,156 --> 00:02:39,659
+sigmoid 函數對數，可用於更新獎勵模型。
+
+103
+00:02:39,951 --> 00:02:41,119
+Essentially,
+
+104
+00:02:39,951 --> 00:02:41,119
+本質上來說，
+
+105
+00:02:41,119 --> 00:02:45,874
+when human labeler says the response j is better than K will design the loss
+
+106
+00:02:41,119 --> 00:02:45,874
+當人類標註員認為回應 j 優於 K 時，我們會設計損失函數
+
+107
+00:02:45,874 --> 00:02:49,961
+such that we encourage the higher reward for response
+
+108
+00:02:45,874 --> 00:02:49,961
+以鼓勵對回應給予更高的獎勵
+
+109
+00:02:49,961 --> 00:02:52,088
+J and discourage the higher reward for response k.
+
+110
+00:02:49,961 --> 00:02:52,088
+J 並抑制對回應 k 給予更高的獎勵
+
+111
+00:02:52,088 --> 00:02:53,298
+J and discourage the higher reward for response k.
+
+112
+00:02:52,088 --> 00:02:53,298
+J 並抑制對回應 k 給予更高的獎勵
+
+113
+00:02:53,298 --> 00:02:53,381
+J and discourage the higher reward for response k.
+
+114
+00:02:53,298 --> 00:02:53,381
+J 並抑制對回應 k 給予較高獎勵
+
+115
+00:02:53,673 --> 00:02:57,677
+In this way, we can train one model such that the more preferred
+
+116
+00:02:53,673 --> 00:02:57,677
+透過這種方式，我們可以訓練一個模型，使得較受偏好的
+
+117
+00:02:57,677 --> 00:03:01,890
+responses are always having a high reward than the less preferred response.
+
+118
+00:02:57,677 --> 00:03:01,890
+回應總是能獲得比次優選擇更高的獎勵
+
+119
+00:03:02,015 --> 00:03:06,227
+And reward model is usually initialized from an existing Instruct model.
+
+120
+00:03:02,015 --> 00:03:06,227
+而獎勵模型通常會以現有的 Instruct 模型作為初始化基礎
+
+121
+00:03:06,227 --> 00:03:08,688
+Then it gets trained on a very large scale human or machine-generated
+
+122
+00:03:06,227 --> 00:03:08,688
+接著它會以極大規模的人類或機器生成資料進行訓練
+
+123
+00:03:08,688 --> 00:03:10,064
+Then it gets trained on a very large scale human or machine-generated
+
+124
+00:03:08,688 --> 00:03:10,064
+接著它會以極大規模的人類或機器生成資料進行訓練
+
+125
+00:03:10,231 --> 00:03:14,777
+preference data, and such reward model works for any open-ended generations.
+
+126
+00:03:10,231 --> 00:03:14,777
+偏好數據，而這樣的獎勵模型適用於任何開放式生成內容。
+
+127
+00:03:15,028 --> 00:03:19,240
+It's also great for improving chat capabilities or safety-related domains,
+
+128
+00:03:15,028 --> 00:03:19,240
+這對於提升聊天能力或安全相關領域也相當有幫助
+
+129
+00:03:19,449 --> 00:03:23,328
+but it can be less accurate for correctness-based domains like hard
+
+130
+00:03:19,449 --> 00:03:23,328
+但在需要精確性的領域，如硬體
+
+131
+00:03:23,328 --> 00:03:24,370
+coding, question, math question or function calling, use cases, etc.
+
+132
+00:03:23,328 --> 00:03:24,370
+編程、問題、數學問題或函數調用等使用情境
+
+133
+00:03:24,370 --> 00:03:25,205
+coding, question, math question or function calling, use cases, etc.
+
+134
+00:03:24,370 --> 00:03:25,205
+編程、問題、數學問題或函數調用等使用情境
+
+135
+00:03:25,205 --> 00:03:26,164
+coding, question, math question or function calling, use cases, etc.
+
+136
+00:03:25,205 --> 00:03:26,164
+編程、問題、數學問題或函數調用等使用情境
+
+137
+00:03:26,164 --> 00:03:27,165
+coding, question, math question or function calling, use cases, etc.
+
+138
+00:03:26,164 --> 00:03:27,165
+編碼、問題、數學題或函式呼叫、使用案例等。
+
+139
+00:03:27,540 --> 00:03:30,460
+And this is where the second option where one can design
+
+140
+00:03:27,540 --> 00:03:30,460
+而這正是第二種選項的用武之地，人們可以設計
+
+141
+00:03:30,460 --> 00:03:33,463
+some verifiable rewards for those correctness space domains.
+
+142
+00:03:30,460 --> 00:03:33,463
+一些可驗證的獎勵機制來針對這些正確性領域。
+
+143
+00:03:33,713 --> 00:03:36,591
+For example, in the domain of math, one can check
+
+144
+00:03:33,713 --> 00:03:36,591
+舉例來說，在數學領域中，我們可以檢查
+
+145
+00:03:36,591 --> 00:03:40,845
+if the response matches to the ground truth given the assumptions that exist.
+
+146
+00:03:36,591 --> 00:03:40,845
+若回應符合現有假設下的標準答案。
+
+147
+00:03:40,970 --> 00:03:44,557
+So if I have a prompt and a corresponding response, we can check whether
+
+148
+00:03:40,970 --> 00:03:44,557
+因此，如果我有一個提示和對應的回應，我們可以檢查
+
+149
+00:03:44,682 --> 00:03:49,062
+the exact answer provided by the response matches the provided ground truth or not.
+
+150
+00:03:44,682 --> 00:03:49,062
+回應提供的確切答案是否符合給定的標準答案。
+
+151
+00:03:49,312 --> 00:03:50,480
+And for coding question,
+
+152
+00:03:49,312 --> 00:03:50,480
+至於程式碼問題，
+
+153
+00:03:50,480 --> 00:03:54,067
+we can verify the correctness of the coding results by running unit tests.
+
+154
+00:03:50,480 --> 00:03:54,067
+我們可以透過執行單元測試來驗證編碼結果的正確性。
+
+155
+00:03:54,359 --> 00:03:58,655
+So if a prompt gives a coding question and response, writes the code correctly,
+
+156
+00:03:54,359 --> 00:03:58,655
+因此，如果一個提示給出了編碼問題和回應，且程式碼撰寫正確，
+
+157
+00:03:59,113 --> 00:04:02,200
+we can always write and provide a large amount
+
+158
+00:03:59,113 --> 00:04:02,200
+我們總能編寫並提供大量
+
+159
+00:04:02,200 --> 00:04:05,620
+of unit tests in the format of test input and ideal test output
+
+160
+00:04:02,200 --> 00:04:05,620
+以測試輸入與理想測試輸出為格式的單元測試
+
+161
+00:04:05,662 --> 00:04:07,997
+then ask the code to see whether the execution result
+
+162
+00:04:05,662 --> 00:04:07,997
+接著讓程式碼檢查執行結果
+
+163
+00:04:07,997 --> 00:04:08,790
+then ask the code to see whether the execution result
+
+164
+00:04:07,997 --> 00:04:08,790
+接著讓程式碼檢查執行結果
+
+165
+00:04:08,915 --> 00:04:11,751
+is matching the output in the provided test output here.
+
+166
+00:04:08,915 --> 00:04:11,751
+是否符合此處提供的測試輸出
+
+167
+00:04:11,834 --> 00:04:15,004
+So usually a verifiable reward would require more efforts
+
+168
+00:04:11,834 --> 00:04:15,004
+因此通常可驗證的獎勵機制需要更多心力
+
+169
+00:04:15,004 --> 00:04:18,132
+in preparation of, say, ground truth for math dataset.
+
+170
+00:04:15,004 --> 00:04:18,132
+比方說，為數學資料集準備基準真值。
+
+171
+00:04:18,132 --> 00:04:21,469
+So need unit task for coding or a very good sandbox
+
+172
+00:04:18,132 --> 00:04:21,469
+因此需要針對編碼的單元任務，或是一個非常完善的沙盒環境
+
+173
+00:04:21,469 --> 00:04:24,847
+execution environment for multi-tenant agent behavior.
+
+174
+00:04:21,469 --> 00:04:24,847
+用於多租戶代理行為的執行環境。
+
+175
+00:04:25,056 --> 00:04:30,056
+However, the efforts here really pay off by giving us a more reliable reward
+
+176
+00:04:25,056 --> 00:04:30,056
+然而，這些努力確實能帶來回報，讓我們獲得更可靠的獎勵
+
+177
+00:04:30,395 --> 00:04:35,066
+function that can be even more precise than a reward model in those domains.
+
+178
+00:04:30,395 --> 00:04:35,066
+在這些領域中，其功能甚至能比獎勵模型更加精準。
+
+179
+00:04:35,400 --> 00:04:40,400
+And the way it works is also used more often for training reasoning models,
+
+180
+00:04:35,400 --> 00:04:40,400
+這種運作方式也常被用於訓練推理模型，
+
+181
+00:04:41,364 --> 00:04:46,364
+and that hopefully can be really good in questions like coding, math, etc.
+
+182
+00:04:41,364 --> 00:04:46,364
+希望能在編程、數學等問題上表現出色。
+
+183
+00:04:46,703 --> 00:04:48,997
+So next, let's dive deeper into a comparison
+
+184
+00:04:46,703 --> 00:04:48,997
+接下來，讓我們更深入地進行比較
+
+185
+00:04:48,997 --> 00:04:52,166
+of two popular online reinforcement learning algorithms.
+
+186
+00:04:48,997 --> 00:04:52,166
+兩種熱門的線上強化學習演算法
+
+187
+00:04:52,375 --> 00:04:55,878
+The first one is Proximal Policy Optimization, or PPO,
+
+188
+00:04:52,375 --> 00:04:55,878
+第一個是近端策略優化（PPO）
+
+189
+00:04:55,962 --> 00:04:59,716
+which was used in the creation of the very first version of ChatGPT.
+
+190
+00:04:55,962 --> 00:04:59,716
+它被用於開發最初版本的 ChatGPT
+
+191
+00:05:00,133 --> 00:05:04,012
+And second one is group relative policy optimization, or GRPO,
+
+192
+00:05:00,133 --> 00:05:04,012
+第二個則是群組相對策略優化（GRPO）
+
+193
+00:05:04,304 --> 00:05:08,725
+which is proposed by DeepSeek and used in most of the DeepSeek training.
+
+194
+00:05:04,304 --> 00:05:08,725
+由 DeepSeek 提出並應用於多數 DeepSeek 訓練中
+
+195
+00:05:09,017 --> 00:05:13,271
+Let's first take a look at the PPO. Usually, when start from a set of queries q
+
+196
+00:05:09,017 --> 00:05:13,271
+我們先來看看 PPO。通常從一組查詢 q 開始
+
+197
+00:05:13,521 --> 00:05:15,315
+and send that to a policy model.
+
+198
+00:05:13,521 --> 00:05:15,315
+並將其發送至策略模型
+
+199
+00:05:15,315 --> 00:05:18,776
+Here's a policy model is essentially just a language model itself.
+
+200
+00:05:15,315 --> 00:05:18,776
+這裡的策略模型本質上就是一個語言模型本身
+
+201
+00:05:19,235 --> 00:05:21,738
+is like to update and train it up.
+
+202
+00:05:19,235 --> 00:05:21,738
+就像是要更新並訓練它。
+
+203
+00:05:21,738 --> 00:05:22,488
+And here the yellow blocks are usually refer
+
+204
+00:05:21,738 --> 00:05:22,488
+而這裡的黃色區塊通常指的是
+
+205
+00:05:22,488 --> 00:05:23,990
+And here the yellow blocks are usually refer
+
+206
+00:05:22,488 --> 00:05:23,990
+而這裡的黃色區塊通常指的是
+
+207
+00:05:23,990 --> 00:05:28,119
+to those trained models where the weights are updatable.
+
+208
+00:05:23,990 --> 00:05:28,119
+那些權重可更新的已訓練模型。
+
+209
+00:05:28,411 --> 00:05:31,205
+And later we'll see blue blocks which are frozen models
+
+210
+00:05:28,411 --> 00:05:31,205
+稍後我們會看到藍色區塊代表凍結模型
+
+211
+00:05:31,205 --> 00:05:35,251
+whose weights are actually frozen and won't be updated during the process.
+
+212
+00:05:31,205 --> 00:05:35,251
+這些模型的權重實際上已被凍結，在過程中不會更新
+
+213
+00:05:35,418 --> 00:05:39,464
+So once we send most of the queries to the policy model or the language model
+
+214
+00:05:35,418 --> 00:05:39,464
+當我們將大多數查詢發送至策略模型或語言模型
+
+215
+00:05:39,464 --> 00:05:43,926
+itself, the model will generate output and responses, which is O, here,
+
+216
+00:05:39,464 --> 00:05:43,926
+本身時，模型就會產生輸出和回應，也就是這裡的 O
+
+217
+00:05:44,260 --> 00:05:47,889
+and soft response will be provided to three different models.
+
+218
+00:05:44,260 --> 00:05:47,889
+並將對三種不同模型提供溫和的回應。
+
+219
+00:05:47,889 --> 00:05:52,143
+The first is a reference model, which is a copy of the original model
+
+220
+00:05:47,889 --> 00:05:52,143
+首先是參考模型，它是原始模型的副本
+
+221
+00:05:52,268 --> 00:05:57,065
+that's mostly used to calculate some code divergence that hopefully can keep
+
+222
+00:05:52,268 --> 00:05:57,065
+主要用於計算某些代碼分歧，希望能保持
+
+223
+00:05:57,065 --> 00:06:00,610
+the language model not changed too much from the original weights.
+
+224
+00:05:57,065 --> 00:06:00,610
+語言模型與原始權重不會相差太多。
+
+225
+00:06:00,985 --> 00:06:03,946
+And the second is a reward model, which takes
+
+226
+00:06:00,985 --> 00:06:03,946
+第二個是獎勵模型，它接收
+
+227
+00:06:03,946 --> 00:06:07,909
+the input of the query and output an output reward
+
+228
+00:06:03,946 --> 00:06:07,909
+查詢的輸入並輸出一個獎勵值
+
+229
+00:06:07,909 --> 00:06:11,371
+here, to give the update of the policy model.
+
+230
+00:06:07,909 --> 00:06:11,371
+這裡，用來提供策略模型的更新。
+
+231
+00:06:11,746 --> 00:06:15,375
+And third one is a trainable value model or critic model,
+
+232
+00:06:11,746 --> 00:06:15,375
+第三個是可訓練的價值模型或評論家模型，
+
+233
+00:06:15,708 --> 00:06:20,708
+and soft critic model is trying to assign this to each individual token
+
+234
+00:06:15,708 --> 00:06:20,708
+而軟性評論模型正試圖將這個分配給每個單獨的詞元
+
+235
+00:06:21,172 --> 00:06:26,172
+so that one can decompose those response level reward into a token level reward.
+
+236
+00:06:21,172 --> 00:06:26,172
+這樣就能將回應層級的獎勵分解為詞元層級的獎勵
+
+237
+00:06:27,136 --> 00:06:31,265
+It's actually after we cast a reward and the value function or value
+
+238
+00:06:27,136 --> 00:06:31,265
+實際上是在我們計算完獎勵與價值函數或價值
+
+239
+00:06:31,265 --> 00:06:36,265
+model's output, we will use a technique called generalized advantage estimation
+
+240
+00:06:31,265 --> 00:06:36,265
+模型的輸出後，我們會使用一種稱為廣義優勢估計的技術
+
+241
+00:06:36,479 --> 00:06:40,900
+to estimate a concept called advantage A here, which is trying to characterize
+
+242
+00:06:36,479 --> 00:06:40,900
+用來估算一個稱為「優勢 A」的概念，這裡試圖描述
+
+243
+00:06:40,942 --> 00:06:45,530
+the credits for each individual token, or the contributions of each individual
+
+244
+00:06:40,942 --> 00:06:45,530
+每個單獨詞元的貢獻值，或是每個單獨詞元
+
+245
+00:06:45,530 --> 00:06:46,114
+token to the entire responses. by looking at the individual advantage.
+
+246
+00:06:45,530 --> 00:06:46,114
+對整體回應的影響。透過觀察個別優勢值。
+
+247
+00:06:46,114 --> 00:06:49,534
+token to the entire responses. by looking at the individual advantage.
+
+248
+00:06:46,114 --> 00:06:49,534
+對整體回應的影響。透過觀察個別優勢值。
+
+249
+00:06:49,992 --> 00:06:53,913
+We can use that as a signal to guide the update of the policy model.
+
+250
+00:06:49,992 --> 00:06:53,913
+我們可以利用這個訊號來引導策略模型的更新。
+
+251
+00:06:54,163 --> 00:06:57,834
+So in PPO, essentially you trying to maximize return
+
+252
+00:06:54,163 --> 00:06:57,834
+所以在 PPO 中，本質上你試圖最大化回報
+
+253
+00:06:57,834 --> 00:06:57,917
+So in PPO, essentially you trying to maximize return
+
+254
+00:06:57,834 --> 00:06:57,917
+所以在 PPO 中，本質上你試圖最大化回報
+
+255
+00:06:57,917 --> 00:07:01,379
+or the advantage for your current policy Pi Zeta.
+
+256
+00:06:57,917 --> 00:07:01,379
+或是你當前策略 Pi Zeta 的優勢。
+
+257
+00:07:01,712 --> 00:07:06,467
+But since you are not able to directly sample from the most recent model Pi Zeta,
+
+258
+00:07:01,712 --> 00:07:06,467
+但由於你無法直接從最新的模型 Pi Zeta 中取樣，
+
+259
+00:07:06,717 --> 00:07:10,346
+there's an important sampling trick in this PPO target function formula.
+
+260
+00:07:06,717 --> 00:07:10,346
+這個 PPO 目標函數公式中有一個重要的取樣技巧。
+
+261
+00:07:10,471 --> 00:07:14,308
+So essentially we want to maximize an expected advantage
+
+262
+00:07:10,471 --> 00:07:14,308
+所以基本上我們想要最大化一個期望優勢
+
+263
+00:07:14,392 --> 00:07:17,395
+which is At where the expectation is taken over Pi Zeta
+
+264
+00:07:14,392 --> 00:07:17,395
+也就是 At，其中期望值是針對 Pi Zeta 計算的
+
+265
+00:07:17,728 --> 00:07:20,398
+But we only got data from a previous step of some language model
+
+266
+00:07:17,728 --> 00:07:20,398
+但我們只從某個語言模型的前一步驟取得資料
+
+267
+00:07:20,398 --> 00:07:21,649
+But we only got data from a previous step of some language model
+
+268
+00:07:20,398 --> 00:07:21,649
+但我們只從某個語言模型的前一步驟取得資料
+
+269
+00:07:21,649 --> 00:07:22,900
+which is Pi Zeta old.
+
+270
+00:07:21,649 --> 00:07:22,900
+也就是舊的 Pi Zeta 模型。
+
+271
+00:07:22,900 --> 00:07:25,903
+So then we take this expectation
+
+272
+00:07:22,900 --> 00:07:25,903
+所以接著我們要計算這個期望值
+
+273
+00:07:25,903 --> 00:07:28,656
+of the responses generated by Pi Zeta old
+
+274
+00:07:25,903 --> 00:07:28,656
+由 Pi Zeta 舊版生成的回應
+
+275
+00:07:28,656 --> 00:07:33,656
+and then we design an important ratio which is the Pi Zeta over Pi Zeta old.
+
+276
+00:07:28,656 --> 00:07:33,656
+接著我們設計了一個重要比率，即 Pi Zeta 與 Pi Zeta 舊版的比例。
+
+277
+00:07:33,703 --> 00:07:34,787
+Whereas the Pi Zeta old
+
+278
+00:07:33,703 --> 00:07:34,787
+而 Pi Zeta 舊版
+
+279
+00:07:34,787 --> 00:07:39,041
+is a progress steps language model and Pi Zeta is a current step language model.
+
+280
+00:07:34,787 --> 00:07:39,041
+是一個進程步驟語言模型，Pi Zeta 則是當前步驟語言模型。
+
+281
+00:07:39,375 --> 00:07:40,710
+In this way, you're essentially
+
+282
+00:07:39,375 --> 00:07:40,710
+如此一來，你基本上是在
+
+283
+00:07:40,710 --> 00:07:44,881
+trying to maximize the expected advantage for the current policy Pi Zeta.
+
+284
+00:07:40,710 --> 00:07:44,881
+試圖最大化當前策略 Pi Zeta 的預期優勢。
+
+285
+00:07:45,089 --> 00:07:48,050
+And there are some more trace in this PPO loss function,
+
+286
+00:07:45,089 --> 00:07:48,050
+而這個 PPO 損失函數中還有一些額外的跡象，
+
+287
+00:07:48,050 --> 00:07:51,304
+which tries to keep this ratio so that this ratio
+
+288
+00:07:48,050 --> 00:07:51,304
+試圖保持這個比例，讓這個比例
+
+289
+00:07:51,304 --> 00:07:51,804
+won't be too large or too small during this training process.
+
+290
+00:07:51,304 --> 00:07:51,804
+在這個訓練過程中不會過大或過小。
+
+291
+00:07:51,804 --> 00:07:54,432
+won't be too large or too small during this training process.
+
+292
+00:07:51,804 --> 00:07:54,432
+在這個訓練過程中不會過大或過小。
+
+293
+00:07:54,765 --> 00:07:57,768
+it's also taking the minimum of one direct
+
+294
+00:07:54,765 --> 00:07:57,768
+同時也取直接比例乘以優勢值
+
+295
+00:07:57,768 --> 00:08:01,355
+ratio times the advantage and one clip ratio times the advantage.
+
+296
+00:07:57,768 --> 00:08:01,355
+與裁剪比例乘以優勢值兩者中的較小值。
+
+297
+00:08:01,564 --> 00:08:05,610
+So as a result, such PPO utilize an important sampling-based method
+
+298
+00:08:01,564 --> 00:08:05,610
+因此，這類 PPO 採用了基於重要性抽樣的重要方法
+
+299
+00:08:05,610 --> 00:08:05,943
+So as a result, such PPO utilize an important sampling-based method
+
+300
+00:08:05,610 --> 00:08:05,943
+因此，這類 PPO 採用了基於重要性抽樣的重要方法
+
+301
+00:08:05,985 --> 00:08:10,072
+trying to maximize advantage for the given current policy Pi Zeta.
+
+302
+00:08:05,985 --> 00:08:10,072
+試圖最大化當前策略 Pi Zeta 的優勢
+
+303
+00:08:10,072 --> 00:08:10,156
+trying to maximize advantage for the given current policy Pi.
+
+304
+00:08:10,072 --> 00:08:10,156
+試圖最大化當前策略 Pi 的優勢
+
+305
+00:08:10,656 --> 00:08:13,326
+So that's essentially most of the details about PPO.
+
+306
+00:08:10,656 --> 00:08:13,326
+以上就是關於 PPO 的大部分細節內容。
+
+307
+00:08:13,326 --> 00:08:15,161
+Now, let's tackle GRPO.
+
+308
+00:08:13,326 --> 00:08:15,161
+現在，我們來探討 GRPO。
+
+309
+00:08:15,161 --> 00:08:20,161
+So GRPO is actually very similar to PPO in that it's also using advantage
+
+310
+00:08:15,161 --> 00:08:20,161
+GRPO 實際上與 PPO 非常相似，它同樣使用了優勢函數
+
+311
+00:08:20,833 --> 00:08:25,046
+and maximize the exact same formula here to update your language model.
+
+312
+00:08:20,833 --> 00:08:25,046
+並透過完全相同的公式來更新你的語言模型以達到最大化效果。
+
+313
+00:08:25,046 --> 00:08:25,129
+and maximize the exact same formula here to update your language model.
+
+314
+00:08:25,046 --> 00:08:25,129
+並在此處最大化完全相同的公式來更新你的語言模型。
+
+315
+00:08:25,254 --> 00:08:29,342
+But the main difference here is the way you calculate the advantage function.
+
+316
+00:08:25,254 --> 00:08:29,342
+但這裡的主要差異在於計算優勢函數的方式。
+
+317
+00:08:29,634 --> 00:08:34,263
+So similar to PPO, still your start from a query q send that to a policy model.
+
+318
+00:08:29,634 --> 00:08:34,263
+與 PPO 類似，你仍然從一個查詢 q 開始，將其發送到策略模型。
+
+319
+00:08:34,554 --> 00:08:36,015
+The policy model will generate
+
+320
+00:08:34,554 --> 00:08:36,015
+策略模型將會生成
+
+321
+00:08:36,015 --> 00:08:39,769
+multiple responses in this case which is O1 to Og as a group.
+
+322
+00:08:36,015 --> 00:08:39,769
+在這種情況下會有多個回應，從 O1 到 Og 作為一個群組。
+
+323
+00:08:40,102 --> 00:08:42,897
+And for each prompt, you have two responses generated
+
+324
+00:08:40,102 --> 00:08:42,897
+而對於每個提示，你會產生兩個回應
+
+325
+00:08:42,897 --> 00:08:46,150
+and you still use the reference model and reward model
+
+326
+00:08:42,897 --> 00:08:46,150
+並且你仍然使用參考模型和獎勵模型
+
+327
+00:08:46,359 --> 00:08:50,279
+to calculate the pair of divergence and the reward for each of the response.
+
+328
+00:08:46,359 --> 00:08:50,279
+來計算每對回應的差異度和每個回應的獎勵值。
+
+329
+00:08:50,530 --> 00:08:54,075
+And then you get a group of the same query like multiple outputs
+
+330
+00:08:50,530 --> 00:08:54,075
+然後你會得到一組相同的查詢，像是多個輸出
+
+331
+00:08:54,283 --> 00:08:55,576
+and multiple rewards.
+
+332
+00:08:54,283 --> 00:08:55,576
+和多個獎勵。
+
+333
+00:08:55,576 --> 00:08:59,664
+Then you use some group computation to calculate the relative reward
+
+334
+00:08:55,576 --> 00:08:59,664
+接著你使用一些群組計算來計算每個輸出的相對獎勵
+
+335
+00:08:59,830 --> 00:09:00,581
+for each of the output, and you assume that the relative reward
+
+336
+00:08:59,830 --> 00:09:00,581
+並且你假設這個相對獎勵
+
+337
+00:09:00,581 --> 00:09:03,042
+for each of the output, and you assume that the relative reward
+
+338
+00:09:00,581 --> 00:09:03,042
+針對每一個輸出，你假設相對獎勵
+
+339
+00:09:03,251 --> 00:09:06,254
+will just be the advantage for each individual token.
+
+340
+00:09:03,251 --> 00:09:06,254
+就只是每個單獨詞元的優勢值。
+
+341
+00:09:06,337 --> 00:09:10,883
+And in this way, you get the more brute force estimation of advantage
+
+342
+00:09:06,337 --> 00:09:10,883
+如此一來，你就能獲得對每個詞元更為直接的優勢估算
+
+343
+00:09:10,883 --> 00:09:15,096
+for each token, and you use that advantage to update the policy model.
+
+344
+00:09:10,883 --> 00:09:15,096
+並運用該優勢值來更新策略模型。
+
+345
+00:09:15,221 --> 00:09:17,265
+So it's actually ever seen
+
+346
+00:09:15,221 --> 00:09:17,265
+所以這其實是前所未見的
+
+347
+00:09:17,265 --> 00:09:18,891
+after getting the advantage,
+
+348
+00:09:17,265 --> 00:09:18,891
+在獲得優勢之後，
+
+349
+00:09:19,100 --> 00:09:21,352
+PPO and GRPO are very similar.
+
+350
+00:09:19,100 --> 00:09:21,352
+PPO 和 GRPO 非常相似。
+
+351
+00:09:21,352 --> 00:09:24,564
+The main difference lies in the way of estimating advantage,
+
+352
+00:09:21,352 --> 00:09:24,564
+主要差異在於估算優勢的方式，
+
+353
+00:09:24,564 --> 00:09:27,066
+where PPO realize our actual value model
+
+354
+00:09:24,564 --> 00:09:27,066
+其中 PPO 實現了我們需要在整個過程中訓練的實際價值模型
+
+355
+00:09:27,066 --> 00:09:30,278
+that needs to be trained during the entire process, where GRPO
+
+356
+00:09:27,066 --> 00:09:30,278
+而 GRPO 則擺脫了這個價值模型
+
+357
+00:09:30,486 --> 00:09:34,657
+gets rid of this value model and thus can be more memory efficient.
+
+358
+00:09:30,486 --> 00:09:34,657
+因此能更節省記憶體
+
+359
+00:09:34,865 --> 00:09:37,785
+Though the cost of getting rid of such value model
+
+360
+00:09:34,865 --> 00:09:37,785
+雖然擺脫這種價值模型需要付出代價
+
+361
+00:09:37,785 --> 00:09:41,455
+is that your advantage estimation can be more brute force,
+
+362
+00:09:37,785 --> 00:09:41,455
+這代表你的優勢估計可以更為直接粗暴，
+
+363
+00:09:41,581 --> 00:09:46,085
+and stays the same for every token in the same response. Where for PPO
+
+364
+00:09:41,581 --> 00:09:46,085
+且對同一個回應中的每個標記都保持相同。而 PPO
+
+365
+00:09:46,460 --> 00:09:49,672
+the advantage can be different for each individual token.
+
+366
+00:09:46,460 --> 00:09:49,672
+的優勢則可能對每個單獨的標記都不一樣。
+
+367
+00:09:49,880 --> 00:09:54,093
+In short summary, what PPO does is to use an actual value
+
+368
+00:09:49,880 --> 00:09:54,093
+簡而言之，PPO 的做法是使用實際價值
+
+369
+00:09:54,093 --> 00:09:58,180
+model or critic model to assign credit for each individual token.
+
+370
+00:09:54,093 --> 00:09:58,180
+模型或評論模型來為每個單獨的詞元分配功勞。
+
+371
+00:09:58,306 --> 00:10:01,892
+In this way, in your entire generation, each word or token
+
+372
+00:09:58,306 --> 00:10:01,892
+如此一來，在整個生成過程中，每個詞或詞元
+
+373
+00:10:02,059 --> 00:10:05,062
+will have a different advantage value, which shows
+
+374
+00:10:02,059 --> 00:10:05,062
+都會有不同的優勢值，這顯示了
+
+375
+00:10:05,062 --> 00:10:08,608
+which token is more important, which token is less important.
+
+376
+00:10:05,062 --> 00:10:08,608
+哪些詞元比較重要，哪些詞元相對不重要。
+
+377
+00:10:08,899 --> 00:10:12,778
+Whereas in GRPO, because we got rid of safe value model
+
+378
+00:10:08,899 --> 00:10:12,778
+然而在 GRPO 中，由於我們移除了安全值模型
+
+379
+00:10:12,778 --> 00:10:16,324
+or critic model, each token will have the same advantage
+
+380
+00:10:12,778 --> 00:10:16,324
+或評論模型，只要它們保持在相同的輸出中
+
+381
+00:10:16,616 --> 00:10:18,951
+as long as they're staying in the same output.
+
+382
+00:10:16,616 --> 00:10:18,951
+每個詞元都會擁有相同的優勢。
+
+383
+00:10:18,951 --> 00:10:19,368
+as long as they're staying in the same output.
+
+384
+00:10:18,951 --> 00:10:19,368
+只要它們保持在相同的輸出中。
+
+385
+00:10:19,368 --> 00:10:19,452
+as long as they're staying in the same output.
+
+386
+00:10:19,368 --> 00:10:19,452
+ ...
+
+387
+00:10:19,452 --> 00:10:23,664
+So in this way, PPO usually gives a more fine-grained advantage feedback
+
+388
+00:10:19,452 --> 00:10:23,664
+ ...
+
+389
+00:10:23,748 --> 00:10:25,207
+for each individual token.
+
+390
+00:10:23,748 --> 00:10:25,207
+ ...
+
+391
+00:10:25,207 --> 00:10:28,169
+While GRPO is giving more uniform
+
+392
+00:10:25,207 --> 00:10:28,169
+ ...
+
+393
+00:10:28,169 --> 00:10:29,420
+advantage for the tokens in the same response.
+
+394
+00:10:28,169 --> 00:10:29,420
+同一回應中詞元的優勢
+
+395
+00:10:29,420 --> 00:10:29,670
+advantage for the tokens in the same response.
+
+396
+00:10:29,420 --> 00:10:29,670
+同一回應中詞元的優勢
+
+397
+00:10:29,670 --> 00:10:30,963
+advantage for the tokens in the same response.
+
+398
+00:10:29,670 --> 00:10:30,963
+同一回應中詞元的優勢
+
+399
+00:10:31,130 --> 00:10:34,133
+Lastly, I'd like to give more detailed comparison
+
+400
+00:10:31,130 --> 00:10:34,133
+最後，我想提供更詳細的比較
+
+401
+00:10:34,300 --> 00:10:37,553
+of their use cases between GRPO versus PPO.
+
+402
+00:10:34,300 --> 00:10:37,553
+GRPO 與 PPO 的應用情境比較
+
+403
+00:10:37,845 --> 00:10:40,931
+So both GRPO and PPO a very effective online
+
+404
+00:10:37,845 --> 00:10:40,931
+GRPO 和 PPO 都是非常有效的線上
+
+405
+00:10:40,931 --> 00:10:45,102
+reinforcement learning algorithms, and the design of GRPO is more
+
+406
+00:10:40,931 --> 00:10:45,102
+強化學習演算法，而 GRPO 的設計更
+
+407
+00:10:45,102 --> 00:10:48,981
+well suited for binary or often correctness-based reward.
+
+408
+00:10:45,102 --> 00:10:48,981
+適合二元或基於正確性的獎勵機制
+
+409
+00:10:49,231 --> 00:10:52,443
+If you really request larger amount of samples due to the nature of
+
+410
+00:10:49,231 --> 00:10:52,443
+若因應需求特性而確實需要更多樣本
+
+411
+00:10:52,443 --> 00:10:57,239
+only assigning credits to full responses instead of individual tokens.
+
+412
+00:10:52,443 --> 00:10:57,239
+僅對完整回應賦予評分，而非個別詞元
+
+413
+00:10:57,239 --> 00:10:57,281
+only assigning credits to full responses instead of individual tokens.
+
+414
+00:10:57,239 --> 00:10:57,281
+僅對完整回應賦予評分，而非個別詞元
+
+415
+00:10:57,281 --> 00:10:58,032
+However,
+
+416
+00:10:57,281 --> 00:10:58,032
+然而
+
+417
+00:10:58,032 --> 00:11:01,952
+it also requires less GRPO memory since no value model is needed here.
+
+418
+00:10:58,032 --> 00:11:01,952
+它還需要較少的 GRPO 記憶體，因為這裡不需要價值模型。
+
+419
+00:11:02,328 --> 00:11:06,082
+In contrast, PPO usually works well with both reward model
+
+420
+00:11:02,328 --> 00:11:06,082
+相比之下，PPO 通常能與獎勵模型良好配合
+
+421
+00:11:06,082 --> 00:11:09,085
+or as a binary reward, and it can be more sample efficient
+
+422
+00:11:06,082 --> 00:11:09,085
+或作為二元獎勵使用，並且在面對訓練良好的價值函數時
+
+423
+00:11:09,085 --> 00:11:11,545
+when it comes to a well-trained value function.
+
+424
+00:11:09,085 --> 00:11:11,545
+可以更有效率地利用樣本。
+
+425
+00:11:11,545 --> 00:11:16,545
+However, it might require more GPU memory because of the actual value model here.
+
+426
+00:11:11,545 --> 00:11:16,545
+然而，由於這裡採用了實際價值模型，可能會需要更多的 GPU 記憶體。
+
+427
+00:11:16,801 --> 00:11:18,302
+So in this lesson, we have learned about the difference
+
+428
+00:11:16,801 --> 00:11:18,302
+因此在本節課程中，我們已經學習了
+
+429
+00:11:18,302 --> 00:11:19,428
+So in this lesson, we have learned about the difference
+
+430
+00:11:18,302 --> 00:11:19,428
+因此在本節課程中，我們已經學習了
+
+431
+00:11:19,637 --> 00:11:22,973
+between offline reinforcement learning and online reinforcement learning
+
+432
+00:11:19,637 --> 00:11:22,973
+離線強化學習與線上強化學習之間的差異
+
+433
+00:11:23,140 --> 00:11:26,852
+and dive deeper into the two algorithms GRPO and PPO.
+
+434
+00:11:23,140 --> 00:11:26,852
+並深入探討 GRPO 和 PPO 這兩種演算法。
+
+435
+00:11:27,144 --> 00:11:30,147
+And in the next lesson, we will use GRPO
+
+436
+00:11:27,144 --> 00:11:30,147
+而在下一堂課中，我們將使用 GRPO
+
+437
+00:11:30,231 --> 00:11:31,357
+to improve and mask capability for an instruct model.
+
+438
+00:11:30,231 --> 00:11:31,357
+來提升指令模型的改進與遮蔽能力。
+
+439
+00:11:31,357 --> 00:11:33,442
+to improve and mask capability for an instruct model.
+
+440
+00:11:31,357 --> 00:11:33,442
+來提升指令模型的改進與遮蔽能力。
+
+441
+00:11:33,609 --> 00:11:34,610
+Excited to see you there.
+
+442
+00:11:33,609 --> 00:11:34,610
+很高興在那裡見到你。
+

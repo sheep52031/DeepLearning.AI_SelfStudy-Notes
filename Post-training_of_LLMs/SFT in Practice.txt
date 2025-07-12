@@ -1,0 +1,2664 @@
+1
+00:00:02,544 --> 00:00:03,461
+In this lesson,
+
+2
+00:00:02,544 --> 00:00:03,461
+本課程將示範如何對語言模型進行監督式微調（SFT），使用小型資料集與模型進行實務演練。流程包含在標註過的對話資料上訓練基礎語言模型，以提升其對話流暢度。課程接著會測試..
+
+3
+00:00:03,461 --> 00:00:06,965
+you'll build the SFT pipeline on a small scale training dataset.
+
+4
+00:00:03,461 --> 00:00:06,965
+你將在一個小規模的訓練資料集上建立 SFT 流程管線。
+
+5
+00:00:07,465 --> 00:00:09,759
+All right, let's dive into the code.
+
+6
+00:00:07,465 --> 00:00:09,759
+好的，讓我們深入探討程式碼部分。
+
+7
+00:00:09,759 --> 00:00:12,512
+As you remember, SFT or supervised fine-tuning
+
+8
+00:00:09,759 --> 00:00:12,512
+如你所記得，SFT 或監督式微調
+
+9
+00:00:12,512 --> 00:00:16,641
+is for imitating example responses. We usually start from any language model,
+
+10
+00:00:12,512 --> 00:00:16,641
+是用來模仿範例回應的。我們通常會從任何語言模型開始，
+
+11
+00:00:16,766 --> 00:00:17,767
+which can be a base model where the assistant tries
+
+12
+00:00:16,766 --> 00:00:17,767
+這可以是一個基礎模型，其中助手嘗試
+
+13
+00:00:17,767 --> 00:00:20,395
+which can be a base model where the assistant tries
+
+14
+00:00:17,767 --> 00:00:20,395
+這可以是一個基礎模型，其中助手嘗試
+
+15
+00:00:20,395 --> 00:00:24,065
+to only predict the next most possible tokens based on user queries.
+
+16
+00:00:20,395 --> 00:00:24,065
+僅根據使用者查詢來預測下一個最可能的詞彙。
+
+17
+00:00:24,315 --> 00:00:27,402
+Then we can curate some chat data or instruction following data
+
+18
+00:00:24,315 --> 00:00:27,402
+接著我們可以整理一些聊天資料或指令遵循資料
+
+19
+00:00:27,652 --> 00:00:31,740
+where the assistant respond to the user queries in a more natural fashion.
+
+20
+00:00:27,652 --> 00:00:31,740
+讓助手能以更自然的方式回應用戶的查詢
+
+21
+00:00:31,740 --> 00:00:33,408
+When the user asks how are you?
+
+22
+00:00:31,740 --> 00:00:33,408
+當用戶問你最近好嗎？
+
+23
+00:00:33,408 --> 00:00:35,577
+The ideal response will be I'm doing great.
+
+24
+00:00:33,408 --> 00:00:35,577
+理想的回應會是「我很好」
+
+25
+00:00:35,577 --> 00:00:40,577
+And we use this labeled data to do this supervised fine-tuning on top of the base model
+
+26
+00:00:35,577 --> 00:00:40,577
+我們利用這些標記數據在基礎模型上進行監督式微調
+
+27
+00:00:40,957 --> 00:00:44,878
+to get a fine-tuned language model, which can chat with you more fluently.
+
+28
+00:00:40,957 --> 00:00:44,878
+以獲得一個經過微調的語言模型，能更流暢地與您對話
+
+29
+00:00:45,295 --> 00:00:48,298
+In the lab, we will start from a base language model
+
+30
+00:00:45,295 --> 00:00:48,298
+在實驗中，我們將從一個基礎語言模型開始
+
+31
+00:00:48,339 --> 00:00:50,383
+and prepare a label data for chat and instruction following.
+
+32
+00:00:48,339 --> 00:00:50,383
+並準備用於聊天和指令跟隨的標記資料。
+
+33
+00:00:50,383 --> 00:00:51,593
+and prepare a label data for chat and instruction following.
+
+34
+00:00:50,383 --> 00:00:51,593
+並準備用於聊天和指令跟隨的標記資料。
+
+35
+00:00:51,885 --> 00:00:56,885
+And will conduct a SFT to get a fine tuned model that can chat with a user.
+
+36
+00:00:51,885 --> 00:00:56,885
+接著將進行監督式微調(SFT)，以獲得能與使用者對話的微調模型。
+
+37
+00:00:57,390 --> 00:01:00,060
+Okay, let's see all of this in code.
+
+38
+00:00:57,390 --> 00:01:00,060
+好的，讓我們透過程式碼來看看這整個過程。
+
+39
+00:01:00,060 --> 00:01:03,480
+We'll start from importing important and relevant libraries first.
+
+40
+00:01:00,060 --> 00:01:03,480
+我們首先從導入重要且相關的函式庫開始。
+
+41
+00:01:03,480 --> 00:01:08,480
+We first import torch which is essential for training with PyTorch.
+
+42
+00:01:03,480 --> 00:01:08,480
+我們首先導入 torch，這對於使用 PyTorch 進行訓練至關重要。
+
+43
+00:01:09,444 --> 00:01:11,988
+And we'll also import pandas here for
+
+44
+00:01:09,444 --> 00:01:11,988
+我們也會在這裡導入 pandas，
+
+45
+00:01:11,988 --> 00:01:14,908
+displaying some of the tables we'll be using new dataset.
+
+46
+00:01:11,988 --> 00:01:14,908
+用來顯示我們將使用的新資料集中的一些表格。
+
+47
+00:01:14,949 --> 00:01:19,370
+And we use HuggingFace datasets library to load all the relevant dataset.
+
+48
+00:01:14,949 --> 00:01:19,370
+我們使用 HuggingFace 的 datasets 函式庫來載入所有相關的資料集。
+
+49
+00:01:19,662 --> 00:01:24,417
+And there will be a dataset class here for defining those relevant datasets here.
+
+50
+00:01:19,662 --> 00:01:24,417
+這裡會有一個資料集類別，用來定義那些相關的資料集。
+
+51
+00:01:24,501 --> 00:01:27,670
+And there's another import a library from Transformers,
+
+52
+00:01:24,501 --> 00:01:27,670
+另外還需要從 Transformers 導入一個函式庫，
+
+53
+00:01:27,796 --> 00:01:31,341
+which is also from HuggingFace where we need the training arguments,
+
+54
+00:01:27,796 --> 00:01:31,341
+這也是來自 HuggingFace，我們需要訓練參數、
+
+55
+00:01:31,674 --> 00:01:35,804
+the auto tokenizer, and also the auto model for causal LLMs.
+
+56
+00:01:31,674 --> 00:01:35,804
+自動分詞器，以及用於因果 LLMs 的自動模型。
+
+57
+00:01:35,804 --> 00:01:38,681
+And lastly, we'll be using HuggingFace TRL
+
+58
+00:01:35,804 --> 00:01:38,681
+最後，我們將使用 HuggingFace TRL
+
+59
+00:01:38,681 --> 00:01:43,353
+throughout this coding lesson where we'll be using SFT trainer
+
+60
+00:01:38,681 --> 00:01:43,353
+在這段程式碼教學中，我們會使用 SFT 訓練器
+
+61
+00:01:43,686 --> 00:01:48,686
+and the data collector a SFT config for setting off a SFT training process.
+
+62
+00:01:43,686 --> 00:01:48,686
+以及資料收集器和 SFT 配置來啟動 SFT 訓練流程
+
+63
+00:01:49,526 --> 00:01:53,863
+After getting all the important libraries, let's first set up some helper functions
+
+64
+00:01:49,526 --> 00:01:53,863
+導入所有重要函式庫後，我們先來設定一些輔助函式
+
+65
+00:01:54,155 --> 00:01:57,075
+that will be used throughout the coding lessons.
+
+66
+00:01:54,155 --> 00:01:57,075
+這將在整個程式碼課程中使用。
+
+67
+00:01:57,075 --> 00:01:59,369
+The first function we're going to write is an auxiliary function
+
+68
+00:01:57,075 --> 00:01:59,369
+我們要寫的第一個函數是一個輔助函數
+
+69
+00:01:59,369 --> 00:02:00,245
+The first function we're going to write is an auxiliary function
+
+70
+00:01:59,369 --> 00:02:00,245
+我們要寫的第一個函數是一個輔助函數
+
+71
+00:02:00,245 --> 00:02:01,454
+for general responses.
+
+72
+00:02:00,245 --> 00:02:01,454
+用於一般回應。
+
+73
+00:02:01,454 --> 00:02:04,457
+It takes in the argument of the model itself,
+
+74
+00:02:01,454 --> 00:02:04,457
+它接收模型本身作為參數，
+
+75
+00:02:04,582 --> 00:02:09,086
+the tokenizer, the user message, and path fully the system message
+
+76
+00:02:04,582 --> 00:02:09,086
+以及分詞器、使用者訊息和完整的系統訊息路徑
+
+77
+00:02:09,086 --> 00:02:11,131
+if there is any, and along
+
+78
+00:02:09,086 --> 00:02:11,131
+（如果有的話），同時還包括
+
+79
+00:02:11,131 --> 00:02:14,843
+with the maximum number of new tokens allowed during this generation process.
+
+80
+00:02:11,131 --> 00:02:14,843
+在此生成過程中允許的最大新令牌數量。
+
+81
+00:02:14,884 --> 00:02:16,886
+So when we start, we usually first start
+
+82
+00:02:14,884 --> 00:02:16,886
+所以當我們開始時，通常會先從
+
+83
+00:02:16,886 --> 00:02:20,473
+from a clean empty list for the message.
+
+84
+00:02:16,886 --> 00:02:20,473
+一個乾淨的空訊息清單開始。
+
+85
+00:02:20,974 --> 00:02:23,810
+And if there is a system message, we'll append
+
+86
+00:02:20,974 --> 00:02:23,810
+如果有系統訊息的話，我們會附加
+
+87
+00:02:23,810 --> 00:02:26,396
+with a dictionary where the all the system
+
+88
+00:02:23,810 --> 00:02:26,396
+一個包含所有系統設定的字典
+
+89
+00:02:26,396 --> 00:02:29,399
+and the content being the provide a system message in a string.
+
+90
+00:02:26,396 --> 00:02:29,399
+內容為提供一個系統訊息的字串。
+
+91
+00:02:29,524 --> 00:02:31,234
+And later we also append the user's own message
+
+92
+00:02:29,524 --> 00:02:31,234
+之後我們還會附加使用者自己的訊息
+
+93
+00:02:31,234 --> 00:02:32,068
+And later we also append the user's own message
+
+94
+00:02:31,234 --> 00:02:32,068
+之後我們還會附加使用者自己的訊息
+
+95
+00:02:32,068 --> 00:02:32,902
+And later we also append the user's own message
+
+96
+00:02:32,068 --> 00:02:32,902
+之後我們還會附加使用者自己的訊息
+
+97
+00:02:32,902 --> 00:02:36,573
+in a similar way to accomplish our final messages.
+
+98
+00:02:32,902 --> 00:02:36,573
+以類似的方式來完成我們最終的訊息。
+
+99
+00:02:37,574 --> 00:02:39,117
+So with these messages we'll
+
+100
+00:02:37,574 --> 00:02:39,117
+因此，我們將使用這些訊息
+
+101
+00:02:39,117 --> 00:02:42,537
+be using the Tokenizers API chat template function
+
+102
+00:02:39,117 --> 00:02:42,537
+搭配 Tokenizers API 的聊天模板功能
+
+103
+00:02:42,871 --> 00:02:45,123
+to convert that into a format where the language model is trained from.
+
+104
+00:02:42,871 --> 00:02:45,123
+將其轉換成可供語言模型訓練的格式
+
+105
+00:02:45,123 --> 00:02:47,250
+to convert that into a format where the language model is trained from.
+
+106
+00:02:45,123 --> 00:02:47,250
+將其轉換成可供語言模型訓練的格式
+
+107
+00:02:47,417 --> 00:02:49,085
+And for sync free
+
+108
+00:02:47,417 --> 00:02:49,085
+至於非同步模式
+
+109
+00:02:49,085 --> 00:02:50,003
+specifically, it would require enable syncing to be set to be force
+
+110
+00:02:49,085 --> 00:02:50,003
+具體來說，需將啟用同步設定為強制模式
+
+111
+00:02:50,003 --> 00:02:50,170
+specifically, it would require enable syncing to be set to be force
+
+112
+00:02:50,003 --> 00:02:50,170
+具體來說，需將啟用同步設定為強制模式
+
+113
+00:02:50,170 --> 00:02:53,423
+specifically, it would require enable syncing to be set to be force
+
+114
+00:02:50,170 --> 00:02:53,423
+具體來說，需將啟用同步設定為強制模式
+
+115
+00:02:53,756 --> 00:02:56,718
+in order for the model to not enter into a syncing mode.
+
+116
+00:02:53,756 --> 00:02:56,718
+這樣模型才不會進入同步模式。
+
+117
+00:02:56,759 --> 00:02:58,553
+So after we got the prompt in the text on that,
+
+118
+00:02:56,759 --> 00:02:58,553
+所以當我們在文本中獲得提示後，
+
+119
+00:02:58,553 --> 00:02:59,888
+So after we got the prompt in the text on that,
+
+120
+00:02:58,553 --> 00:02:59,888
+所以當我們在文本中獲得提示後，
+
+121
+00:02:59,971 --> 00:03:03,766
+we'll call the tokenizer to convert the text into tokens.
+
+122
+00:02:59,971 --> 00:03:03,766
+我們將呼叫分詞器來將文字轉換為詞元。
+
+123
+00:03:03,766 --> 00:03:04,267
+we'll call the tokenizer to convert the text into tokens.
+
+124
+00:03:03,766 --> 00:03:04,267
+我們將呼叫分詞器來將文字轉換為詞元。
+
+125
+00:03:04,350 --> 00:03:06,227
+That's the language model can recognize.
+
+126
+00:03:04,350 --> 00:03:06,227
+這樣語言模型才能辨識。
+
+127
+00:03:06,227 --> 00:03:07,437
+And we'll also send that
+
+128
+00:03:06,227 --> 00:03:07,437
+同時我們也會傳送這些
+
+129
+00:03:07,437 --> 00:03:11,691
+to the same device as model in case the model is located in our GPU.
+
+130
+00:03:07,437 --> 00:03:11,691
+將模型與資料置於相同裝置中，以防模型位於我們的 GPU 上。
+
+131
+00:03:11,774 --> 00:03:14,777
+After we catch the token as input, we'll use HuggingFace
+
+132
+00:03:11,774 --> 00:03:14,777
+當我們取得輸入的 token 後，會使用 HuggingFace
+
+133
+00:03:14,777 --> 00:03:18,239
+all models dot generate to generate the corresponding outputs,
+
+134
+00:03:14,777 --> 00:03:18,239
+所有模型的 generate 方法來產生對應輸出，
+
+135
+00:03:18,323 --> 00:03:22,660
+and here we set max new tokens to be the argument part here,
+
+136
+00:03:18,323 --> 00:03:22,660
+此處我們將 max_new_tokens 設為此處的參數部分，
+
+137
+00:03:22,827 --> 00:03:26,206
+so that the function can control how many new tokens can be generated here.
+
+138
+00:03:22,827 --> 00:03:26,206
+這樣函式就能控制這裡可以生成多少個新詞元。
+
+139
+00:03:26,456 --> 00:03:30,627
+Besides model dot generate, I also recommend you to try
+
+140
+00:03:26,456 --> 00:03:30,627
+除了 model.generate，我也推薦你試試
+
+141
+00:03:31,252 --> 00:03:34,589
+VLLM, sglang or TensorRT, which are inference libraries
+
+142
+00:03:31,252 --> 00:03:34,589
+VLLM、sglang 或 TensorRT 這些推論函式庫
+
+143
+00:03:34,589 --> 00:03:35,673
+VLLM, sglang or TensorRT, which are inference libraries
+
+144
+00:03:34,589 --> 00:03:35,673
+VLLM、sglang 或 TensorRT 這些推論函式庫
+
+145
+00:03:35,965 --> 00:03:40,965
+that can be faster and more efficient than HuggingFace own models dot generate.
+
+146
+00:03:35,965 --> 00:03:40,965
+這可能比 HuggingFace 自家的 models.generate 方法更快且更有效率。
+
+147
+00:03:41,638 --> 00:03:45,725
+So after we get these outputs, we can extract the generated IDs
+
+148
+00:03:41,638 --> 00:03:45,725
+所以當我們獲得這些輸出後，就可以用這幾行程式碼
+
+149
+00:03:46,059 --> 00:03:49,187
+and responses using these few lines here.
+
+150
+00:03:46,059 --> 00:03:49,187
+來提取生成的 ID
+
+151
+00:03:49,437 --> 00:03:50,480
+And essentially,
+
+152
+00:03:49,437 --> 00:03:50,480
+和回應內容。
+
+153
+00:03:50,480 --> 00:03:54,734
+what we got from generated IDs will still be in the format of tokens.
+
+154
+00:03:50,480 --> 00:03:54,734
+我們從生成的 ID 中獲得的內容仍會以 token 的形式呈現。
+
+155
+00:03:55,151 --> 00:03:57,528
+And we will call tokenizer dot decode
+
+156
+00:03:55,151 --> 00:03:57,528
+接著我們會呼叫 tokenizer.decode
+
+157
+00:03:57,528 --> 00:04:01,532
+to convert those generated IDs to a text-based response.
+
+158
+00:03:57,528 --> 00:04:01,532
+將這些生成的 ID 轉換為基於文本的回應。
+
+159
+00:04:01,658 --> 00:04:03,451
+And we'll return the response here.
+
+160
+00:04:01,658 --> 00:04:03,451
+最後我們會在這裡返回回應。
+
+161
+00:04:03,451 --> 00:04:06,454
+That concludes the first helper function for generating responses.
+
+162
+00:04:03,451 --> 00:04:06,454
+這樣就完成了第一個用於生成回應的輔助函式。
+
+163
+00:04:07,038 --> 00:04:10,458
+Next we'll implement another function on test models
+
+164
+00:04:07,038 --> 00:04:10,458
+接下來我們將實作另一個測試模型的函式
+
+165
+00:04:10,458 --> 00:04:14,754
+with questions which text in the model tokenizer and a list of questions,
+
+166
+00:04:10,458 --> 00:04:14,754
+該函式會將問題文字輸入模型的分詞器與問題清單中，
+
+167
+00:04:14,837 --> 00:04:17,882
+and possibly assess a message and also a title for printing.
+
+168
+00:04:14,837 --> 00:04:17,882
+並可能評估訊息內容及輸出標題。
+
+169
+00:04:17,882 --> 00:04:21,261
+So we're first print the title and then we call the generate responses
+
+170
+00:04:17,882 --> 00:04:21,261
+首先我們印出標題，然後呼叫 generate_responses
+
+171
+00:04:21,261 --> 00:04:25,640
+to generate each questions response using the post function.
+
+172
+00:04:21,261 --> 00:04:25,640
+使用 post 函數來產生每個問題的回應。
+
+173
+00:04:26,015 --> 00:04:30,311
+And we print out the model input model output for different question
+
+174
+00:04:26,015 --> 00:04:30,311
+接著我們針對不同的問題印出模型輸入與模型輸出
+
+175
+00:04:30,311 --> 00:04:31,229
+and responses.
+
+176
+00:04:30,311 --> 00:04:31,229
+以及回應內容。
+
+177
+00:04:31,229 --> 00:04:34,983
+After this we also have a helper function for defining model
+
+178
+00:04:31,229 --> 00:04:34,983
+在這之後我們還有一個輔助函數用於定義模型
+
+179
+00:04:35,024 --> 00:04:37,360
+loading and tokenizer loading part.
+
+180
+00:04:35,024 --> 00:04:37,360
+載入與分詞器載入的部分。
+
+181
+00:04:37,360 --> 00:04:40,071
+Another function we will need is to load the also model and tokenizer,
+
+182
+00:04:37,360 --> 00:04:40,071
+我們還需要另一個函數來載入模型和分詞器，
+
+183
+00:04:40,071 --> 00:04:41,322
+Another function we will need is to load the also model and tokenizer,
+
+184
+00:04:40,071 --> 00:04:41,322
+我們還需要另一個函數來載入模型和分詞器，
+
+185
+00:04:41,406 --> 00:04:43,533
+where we're taking the model name from HuggingFace,
+
+186
+00:04:41,406 --> 00:04:43,533
+我們從 HuggingFace 取得模型名稱
+
+187
+00:04:43,533 --> 00:04:47,161
+and we're taking whether you want to use GPU or not here as an argument.
+
+188
+00:04:43,533 --> 00:04:47,161
+這裡我們將是否使用 GPU 作為參數傳入
+
+189
+00:04:47,370 --> 00:04:49,163
+And we'll call this auto tokenizer to load from HuggingFace
+
+190
+00:04:47,370 --> 00:04:49,163
+我們將呼叫這個自動分詞器來從 HuggingFace 載入
+
+191
+00:04:49,163 --> 00:04:49,580
+And we'll call this auto tokenizer to load from HuggingFace
+
+192
+00:04:49,163 --> 00:04:49,580
+我們將呼叫這個自動分詞器來從 HuggingFace 載入
+
+193
+00:04:49,580 --> 00:04:50,039
+And we'll call this auto tokenizer to load from HuggingFace
+
+194
+00:04:49,580 --> 00:04:50,039
+我們將呼叫這個自動分詞器來從 HuggingFace 載入
+
+195
+00:04:50,039 --> 00:04:50,790
+And we'll call this auto tokenizer to load from HuggingFace
+
+196
+00:04:50,039 --> 00:04:50,790
+我們將呼叫這個自動分詞器來從 HuggingFace 載入
+
+197
+00:04:50,790 --> 00:04:53,793
+the corresponding tokenizer and we'll call auto model for casualLM
+
+198
+00:04:50,790 --> 00:04:53,793
+對應的分詞器，然後我們會呼叫 auto model for casualLM
+
+199
+00:04:54,335 --> 00:04:56,379
+to actually load the model itself from HuggingFace.
+
+200
+00:04:54,335 --> 00:04:56,379
+來實際從 HuggingFace 載入模型本身。
+
+201
+00:04:56,379 --> 00:04:57,088
+to actually load the model itself from HuggingFace.
+
+202
+00:04:56,379 --> 00:04:57,088
+來實際從 HuggingFace 載入模型本身。
+
+203
+00:04:57,255 --> 00:05:01,592
+And if we use a GPU or send the model to CUDA so that assuming
+
+204
+00:04:57,255 --> 00:05:01,592
+如果我們使用 GPU 或將模型傳送到 CUDA，假設
+
+205
+00:05:01,592 --> 00:05:05,972
+we're using a video GPU, this can be sent directly to locate our model
+
+206
+00:05:01,592 --> 00:05:05,972
+我們使用的是視訊 GPU，這可以直接傳送到定位我們的模型
+
+207
+00:05:05,972 --> 00:05:10,101
+until the GPU has. Another thing we might want to pay attention to,
+
+208
+00:05:05,972 --> 00:05:10,101
+直到 GPU 擁有。另一件我們可能需要注意的事情是，
+
+209
+00:05:10,601 --> 00:05:14,230
+since we're using a pie chart template in the previous generate response
+
+210
+00:05:10,601 --> 00:05:14,230
+既然我們在前一個生成回應中使用了圓餅圖模板
+
+211
+00:05:14,230 --> 00:05:19,230
+function, if there's no such a template existing, we'll just create one ourselves.
+
+212
+00:05:14,230 --> 00:05:19,230
+如果沒有現成的模板，我們就自己創建一個。
+
+213
+00:05:19,610 --> 00:05:21,029
+So the chat template is usually in a change of format,
+
+214
+00:05:19,610 --> 00:05:21,029
+所以聊天模板通常會以格式變更的形式存在，
+
+215
+00:05:21,029 --> 00:05:22,405
+So the chat template is usually in a change of format,
+
+216
+00:05:21,029 --> 00:05:22,405
+所以聊天模板通常會以格式變更的形式存在，
+
+217
+00:05:22,739 --> 00:05:26,242
+where we iterate over all possible messages provided here.
+
+218
+00:05:22,739 --> 00:05:26,242
+我們在這裡會遍歷所有提供的可能訊息。
+
+219
+00:05:26,743 --> 00:05:30,997
+And if the role of the message assistant or just makes the string,
+
+220
+00:05:26,743 --> 00:05:30,997
+如果訊息的角色是助理，就只會產生字串，
+
+221
+00:05:31,039 --> 00:05:34,042
+with a system and followed by the real content here,
+
+222
+00:05:31,039 --> 00:05:34,042
+包含系統訊息並接著這裡的實際內容，
+
+223
+00:05:34,709 --> 00:05:38,838
+and if the role is user, we'll just say a user followed by the content here.
+
+224
+00:05:34,709 --> 00:05:38,838
+如果角色是用戶，我們就只會顯示用戶並接著這裡的內容。
+
+225
+00:05:38,921 --> 00:05:40,465
+And if the job is assistant
+
+226
+00:05:38,921 --> 00:05:40,465
+如果職務是助理
+
+227
+00:05:40,465 --> 00:05:43,343
+or just use assistant followed by the content provided there.
+
+228
+00:05:40,465 --> 00:05:43,343
+或者直接使用「助理」後接提供的內容。
+
+229
+00:05:43,343 --> 00:05:44,927
+And after this, there's some minor tokenizer config, where if there's no such
+
+230
+00:05:43,343 --> 00:05:44,927
+在這之後，還有一些次要的 tokenizer 配置，如果沒有這樣的
+
+231
+00:05:44,927 --> 00:05:45,470
+And after this, there's some minor tokenizer config, where if there's no such
+
+232
+00:05:44,927 --> 00:05:45,470
+在這之後，還有一些次要的 tokenizer 配置，如果沒有這樣的
+
+233
+00:05:45,470 --> 00:05:46,471
+And after this, there's some minor tokenizer config, where if there's no such
+
+234
+00:05:45,470 --> 00:05:46,471
+在這之後，還有一些次要的 tokenizer 配置，如果沒有這樣的
+
+235
+00:05:46,471 --> 00:05:47,889
+And after this, there's some minor tokenizer config, where if there's no such
+
+236
+00:05:46,471 --> 00:05:47,889
+在這之後，還有一些次要的 tokenizer 配置，如果沒有這樣的
+
+237
+00:05:48,139 --> 00:05:52,060
+token exist or by default, shout out to be the end of the sequence token.
+
+238
+00:05:48,139 --> 00:05:52,060
+token 存在或預設情況下，應該輸出為序列結束的 token。
+
+239
+00:05:52,185 --> 00:05:55,980
+As a result, we just return the loaded model and tokenizer in this way.
+
+240
+00:05:52,185 --> 00:05:55,980
+因此，我們就以這種方式回傳載入的模型和 tokenizer。
+
+241
+00:05:56,230 --> 00:05:59,817
+Another function you will need is this display dataset.
+
+242
+00:05:56,230 --> 00:05:59,817
+另一個你會需要用到的功能是這個顯示資料集。
+
+243
+00:05:59,859 --> 00:06:02,820
+Taking the dataset and try to display in a Jupyter
+
+244
+00:05:59,859 --> 00:06:02,820
+取得資料集並嘗試在 Jupyter 中顯示
+
+245
+00:06:02,820 --> 00:06:03,321
+Taking the dataset and try to display in a Jupyter
+
+246
+00:06:02,820 --> 00:06:03,321
+取得資料集並嘗試在 Jupyter 中顯示
+
+247
+00:06:03,321 --> 00:06:07,575
+notebook-friendly fashion where we start from the datasets
+
+248
+00:06:03,321 --> 00:06:07,575
+以適合筆記本的方式呈現，我們從資料集開始
+
+249
+00:06:07,658 --> 00:06:09,577
+examples and then take a look
+
+250
+00:06:07,658 --> 00:06:09,577
+範例並查看
+
+251
+00:06:09,577 --> 00:06:12,663
+at the user message and the system message and append
+
+252
+00:06:09,577 --> 00:06:12,663
+使用者訊息和系統訊息，然後附加
+
+253
+00:06:12,663 --> 00:06:15,666
+the user message as a system message in a loss here.
+
+254
+00:06:12,663 --> 00:06:15,666
+使用者訊息作為系統訊息在此處的損失中。
+
+255
+00:06:15,792 --> 00:06:19,253
+Then we turned out to rows as a table and then display
+
+256
+00:06:15,792 --> 00:06:19,253
+接著我們將列轉為表格形式並顯示
+
+257
+00:06:19,253 --> 00:06:20,004
+it with pandas.
+
+258
+00:06:19,253 --> 00:06:20,004
+使用 pandas 來處理。
+
+259
+00:06:20,004 --> 00:06:20,546
+All right.
+
+260
+00:06:20,004 --> 00:06:20,546
+好的。
+
+261
+00:06:20,546 --> 00:06:23,549
+That's everything we need for the helper function.
+
+262
+00:06:20,546 --> 00:06:23,549
+這就是我們需要的輔助函數所有內容。
+
+263
+00:06:23,549 --> 00:06:26,552
+And next, let's load the base model and test it on
+
+264
+00:06:23,549 --> 00:06:26,552
+接下來，讓我們載入基礎模型並進行測試
+
+265
+00:06:26,552 --> 00:06:27,387
+simple questions.
+
+266
+00:06:26,552 --> 00:06:27,387
+簡單的問題。
+
+267
+00:06:27,387 --> 00:06:28,471
+So there are two parameters we set here first.
+
+268
+00:06:27,387 --> 00:06:28,471
+首先，我們在這裡設定了兩個參數。
+
+269
+00:06:28,471 --> 00:06:29,430
+So there are two parameters we set here first.
+
+270
+00:06:28,471 --> 00:06:29,430
+首先，我們在這裡設定了兩個參數。
+
+271
+00:06:29,430 --> 00:06:32,058
+The first one is we set use CPU to be false.
+
+272
+00:06:29,430 --> 00:06:32,058
+第一個是我們將 use CPU 設為 false。
+
+273
+00:06:32,058 --> 00:06:34,310
+On DeepLearning.AI platform
+
+274
+00:06:32,058 --> 00:06:34,310
+在 DeepLearning.AI 平台上
+
+275
+00:06:34,310 --> 00:06:37,146
+we currently only have access to CPU.
+
+276
+00:06:34,310 --> 00:06:37,146
+我們目前只能使用 CPU。
+
+277
+00:06:37,146 --> 00:06:40,066
+So I'm turning use GPU to false.
+
+278
+00:06:37,146 --> 00:06:40,066
+所以我將 GPU 的使用設定為關閉。
+
+279
+00:06:40,066 --> 00:06:43,236
+But once you try it on your own like GPU
+
+280
+00:06:40,066 --> 00:06:43,236
+但當你自行嘗試時，可以使用 GPU
+
+281
+00:06:43,236 --> 00:06:46,531
+machine, please feel free to tell that use GPU
+
+282
+00:06:43,236 --> 00:06:46,531
+機器，請隨時告知使用 GPU
+
+283
+00:06:46,572 --> 00:06:51,572
+as true. And I also set a few questions here for testing the base model, which is
+
+284
+00:06:46,572 --> 00:06:51,572
+為真。我也在這裡設置了一些問題來測試基礎模型，即
+
+285
+00:06:52,203 --> 00:06:55,206
+give me an what sentence structure of a language model.
+
+286
+00:06:52,203 --> 00:06:55,206
+給我一個語言模型的句子結構範例。
+
+287
+00:06:55,456 --> 00:06:59,877
+Calculate one plus one minus one and also difference between a thread and process?
+
+288
+00:06:55,456 --> 00:06:59,877
+計算一加一減一，並說明執行緒與進程的差異？
+
+289
+00:07:00,294 --> 00:07:03,923
+Next, we'll try loading the model and tokenizer
+
+290
+00:07:00,294 --> 00:07:03,923
+接下來，我們將嘗試載入模型和分詞器
+
+291
+00:07:04,090 --> 00:07:06,759
+from a small Qwen free model, Qwen 3.6b base.
+
+292
+00:07:04,090 --> 00:07:06,759
+從一個小型免費的 Qwen 模型，Qwen 3.6b 基礎版。
+
+293
+00:07:06,759 --> 00:07:07,718
+from a small Qwen free model, Qwen 3.6b base.
+
+294
+00:07:06,759 --> 00:07:07,718
+從一個小型免費的 Qwen 模型，Qwen 3.6b 基礎版。
+
+295
+00:07:07,718 --> 00:07:10,430
+And we'll test those questions on this model.
+
+296
+00:07:07,718 --> 00:07:10,430
+我們將在這個模型上測試這些問題。
+
+297
+00:07:10,430 --> 00:07:12,515
+And note that this is a base model.
+
+298
+00:07:10,430 --> 00:07:12,515
+請注意這是一個基礎模型。
+
+299
+00:07:12,515 --> 00:07:14,976
+And we didn't do any SFT on top of that.
+
+300
+00:07:12,515 --> 00:07:14,976
+而且我們沒有在上面進行任何監督式微調(SFT)。
+
+301
+00:07:14,976 --> 00:07:18,146
+This might take some time or speed it off in the post
+
+302
+00:07:14,976 --> 00:07:18,146
+這可能需要一些時間，或者可以在後期
+
+303
+00:07:18,229 --> 00:07:18,771
+edits.
+
+304
+00:07:18,229 --> 00:07:18,771
+編輯中加快速度。
+
+305
+00:07:18,771 --> 00:07:22,191
+Now we'll see that the base model before any SFT
+
+306
+00:07:18,771 --> 00:07:22,191
+現在我們會看到，在進行任何監督式微調（SFT）之前的基礎模型
+
+307
+00:07:22,483 --> 00:07:25,611
+will output some random tokens for any given instructions.
+
+308
+00:07:22,483 --> 00:07:25,611
+對於任何給定的指令都會輸出一些隨機的詞彙。
+
+309
+00:07:25,611 --> 00:07:26,863
+This is first because the chat template we use
+
+310
+00:07:25,611 --> 00:07:26,863
+首先是因為我們使用的聊天模板
+
+311
+00:07:26,863 --> 00:07:27,196
+This is first because the chat template we use
+
+312
+00:07:26,863 --> 00:07:27,196
+首先是因為我們使用的聊天模板
+
+313
+00:07:27,196 --> 00:07:28,281
+This is first because the chat template we use
+
+314
+00:07:27,196 --> 00:07:28,281
+首先是因為我們使用的聊天模板
+
+315
+00:07:28,614 --> 00:07:31,284
+is never seen during such pre-training.
+
+316
+00:07:28,614 --> 00:07:31,284
+在這種預訓練過程中從未被見過。
+
+317
+00:07:31,284 --> 00:07:36,284
+And second, pre-training model is really not great at answering questions from user.
+
+318
+00:07:31,284 --> 00:07:36,284
+其次，預訓練模型在回答用戶問題方面表現確實不佳。
+
+319
+00:07:36,914 --> 00:07:40,460
+Now, let's take a look at another checkpoint that has been trained through
+
+320
+00:07:36,914 --> 00:07:40,460
+現在，讓我們來看看另一個經過訓練的檢查點
+
+321
+00:07:40,460 --> 00:07:40,710
+Now, let's take a look at another checkpoint that has been trained through
+
+322
+00:07:40,460 --> 00:07:40,710
+現在，讓我們來看看另一個經過訓練的檢查點
+
+323
+00:07:40,710 --> 00:07:44,672
+supervised fine-tuning, which will detail the training process later.
+
+324
+00:07:40,710 --> 00:07:44,672
+監督式微調訓練的檢查點，稍後會詳細說明訓練過程。
+
+325
+00:07:44,839 --> 00:07:47,967
+Now I load at different checkpoints that we trained through a SFT
+
+326
+00:07:44,839 --> 00:07:47,967
+現在我載入我們透過 SFT 訓練的不同檢查點
+
+327
+00:07:48,634 --> 00:07:50,553
+and look at the base model.
+
+328
+00:07:48,634 --> 00:07:50,553
+並查看基礎模型。
+
+329
+00:07:50,553 --> 00:07:55,224
+After training our SFT the output will be different.
+
+330
+00:07:50,553 --> 00:07:55,224
+在完成我們的監督式微調(SFT)訓練後，輸出結果將會有所不同。
+
+331
+00:07:55,558 --> 00:07:58,853
+This might also be slow, so we will speed it up in the post edits here.
+
+332
+00:07:55,558 --> 00:07:58,853
+這個過程可能也會比較慢，所以我們會在後續編輯中進行加速。
+
+333
+00:07:58,853 --> 00:07:59,562
+This might also be slow, so we will speed it up in the post edits here.
+
+334
+00:07:58,853 --> 00:07:59,562
+這個過程可能也會比較慢，所以我們會在後續編輯中進行加速。
+
+335
+00:08:01,856 --> 00:08:02,565
+Now we can see
+
+336
+00:08:01,856 --> 00:08:02,565
+現在我們可以看到
+
+337
+00:08:02,565 --> 00:08:05,651
+that after doing supervised fine-tuning on the base model,
+
+338
+00:08:02,565 --> 00:08:05,651
+在基礎模型上進行監督式微調後，
+
+339
+00:08:05,651 --> 00:08:09,697
+the output is much more natural and the model is able to respond
+
+340
+00:08:05,651 --> 00:08:09,697
+輸出結果變得更加自然，模型也能夠回應
+
+341
+00:08:09,780 --> 00:08:14,577
+to any request here of giving one sentence introduction of a language model
+
+342
+00:08:09,780 --> 00:08:14,577
+任何要求，例如提供語言模型的一句話簡介
+
+343
+00:08:14,577 --> 00:08:15,203
+calculate some,
+
+344
+00:08:14,577 --> 00:08:15,203
+或進行某些計算，
+
+345
+00:08:15,203 --> 00:08:18,956
+last questions and explain the difference between thread and process.
+
+346
+00:08:15,203 --> 00:08:18,956
+最後幾個問題，並解釋執行緒(thread)與行程(process)的差異。
+
+347
+00:08:19,290 --> 00:08:22,293
+I have trained the Qwen 3 model using a SFT
+
+348
+00:08:19,290 --> 00:08:22,293
+我已經使用監督式微調(SFT)訓練了 Qwen 3 模型
+
+349
+00:08:22,668 --> 00:08:27,048
+to compare the model performance before SFT and after SFT.
+
+350
+00:08:22,668 --> 00:08:27,048
+來比較模型在監督式微調前後的表現差異。
+
+351
+00:08:27,173 --> 00:08:32,173
+So next, I'll show you how we exactly conduct the entire SFT process.
+
+352
+00:08:27,173 --> 00:08:32,173
+接下來，我將展示我們實際執行整個監督式微調流程的具體方法。
+
+353
+00:08:32,511 --> 00:08:36,933
+However, due to resource limitation, we won't be performing a SFT
+
+354
+00:08:32,511 --> 00:08:36,933
+然而由於資源限制，我們不會在精確的 Qwen 3.6 B 模型上進行監督式微調
+
+355
+00:08:36,933 --> 00:08:40,770
+on the exact Qwen 3.6 B model, but instead we'll be doing a SFT
+
+356
+00:08:36,933 --> 00:08:40,770
+以及小得多的資料集上進行監督式微調
+
+357
+00:08:40,770 --> 00:08:41,437
+on the exact Qwen 3.6 B model, but instead we'll be doing a SFT
+
+358
+00:08:40,770 --> 00:08:41,437
+以及小得多的資料集上進行監督式微調
+
+359
+00:08:41,437 --> 00:08:44,440
+on a much smaller model and a much smaller dataset.
+
+360
+00:08:41,437 --> 00:08:44,440
+進行監督式微調
+
+361
+00:08:44,440 --> 00:08:47,902
+And feel free to use the entire dataset
+
+362
+00:08:44,440 --> 00:08:47,902
+請隨意使用整個數據集
+
+363
+00:08:47,902 --> 00:08:51,614
+on the same model to reproduce my SFT result.
+
+364
+00:08:47,902 --> 00:08:51,614
+在同一個模型上重現我的監督式微調(SFT)結果。
+
+365
+00:08:51,864 --> 00:08:54,951
+Now let's try doing a SFT on a small model.
+
+366
+00:08:51,864 --> 00:08:54,951
+現在讓我們嘗試在一個小型模型上進行監督式微調(SFT)。
+
+367
+00:08:54,951 --> 00:08:58,412
+we'll first step the model name to be HuggingFaceTB/SmollM2-135M
+
+368
+00:08:54,951 --> 00:08:58,412
+我們首先將模型名稱設定為 HuggingFaceTB/SmollM2-135M
+
+369
+00:08:58,663 --> 00:08:59,622
+which is 135 million prompt a model that's smaller than Qwen3-0.6B
+
+370
+00:08:58,663 --> 00:08:59,622
+這是一個 1.35 億提示的模型，比 Qwen3-0.6B 還要小
+
+371
+00:08:59,622 --> 00:09:03,251
+which is 135 million prompt a model that's smaller than Qwen3-0.6B
+
+372
+00:08:59,622 --> 00:09:03,251
+這是一個 1.35 億提示的模型，比 Qwen3-0.6B 還要小
+
+373
+00:09:03,251 --> 00:09:05,878
+We will load the model and tokenizer here.
+
+374
+00:09:03,251 --> 00:09:05,878
+我們將在這裡載入模型和分詞器
+
+375
+00:09:05,878 --> 00:09:06,712
+And when you train your own model on GPU,
+
+376
+00:09:05,878 --> 00:09:06,712
+當你在 GPU 上訓練自己的模型時
+
+377
+00:09:06,712 --> 00:09:08,673
+And when you train your own model on GPU,
+
+378
+00:09:06,712 --> 00:09:08,673
+當你在 GPU 上訓練自己的模型時
+
+379
+00:09:08,881 --> 00:09:12,510
+please feel free to change the model name to Qwen 3.
+
+380
+00:09:08,881 --> 00:09:12,510
+請隨意將模型名稱更改為 Qwen 3。
+
+381
+00:09:12,510 --> 00:09:14,345
+Also, prepare a training dataset
+
+382
+00:09:12,510 --> 00:09:14,345
+同時，準備一個訓練資料集
+
+383
+00:09:14,345 --> 00:09:14,971
+with a few prompt-response pairs that we created beforehand.
+
+384
+00:09:14,345 --> 00:09:14,971
+我們預先準備的幾組提示與回應配對。
+
+385
+00:09:14,971 --> 00:09:19,016
+with a few prompt-response pairs that we created beforehand.
+
+386
+00:09:14,971 --> 00:09:19,016
+我們預先準備的幾組提示與回應配對。
+
+387
+00:09:19,308 --> 00:09:23,813
+And here's a short list of the example user prompt and assistant responses.
+
+388
+00:09:19,308 --> 00:09:23,813
+這裡有一份簡短的範例使用者提示與助理回應清單。
+
+389
+00:09:23,980 --> 00:09:27,483
+So this instruction can span from questions
+
+390
+00:09:23,980 --> 00:09:27,483
+這些指示可能包含各種問題
+
+391
+00:09:27,567 --> 00:09:30,695
+or instructions or even translation requests, etc...
+
+392
+00:09:27,567 --> 00:09:30,695
+或指令，甚至翻譯請求等等...
+
+393
+00:09:30,903 --> 00:09:33,531
+So this is a very diverse, supervised-finding dataset.
+
+394
+00:09:30,903 --> 00:09:33,531
+這是一個非常多元化的監督式微調資料集。
+
+395
+00:09:33,531 --> 00:09:36,826
+And if we're not using GPU here in a simple environment,
+
+396
+00:09:33,531 --> 00:09:36,826
+如果我們在簡單環境中不使用 GPU，
+
+397
+00:09:37,076 --> 00:09:41,455
+we just first train on the first 100% samples for illustration purpose.
+
+398
+00:09:37,076 --> 00:09:41,455
+為了示範目的，我們會先在前 100%的樣本上進行訓練。
+
+399
+00:09:41,581 --> 00:09:44,709
+And when you use GPU, please feel free to train on the entire dataset
+
+400
+00:09:41,581 --> 00:09:44,709
+當您使用 GPU 時，請隨時在整個資料集上進行訓練
+
+401
+00:09:44,709 --> 00:09:47,712
+to get back the Qwen 3 performance.
+
+402
+00:09:44,709 --> 00:09:47,712
+恢復 Qwen 3 的效能表現
+
+403
+00:09:47,878 --> 00:09:52,633
+The last setting we need to config is SFT trainer configuration, where
+
+404
+00:09:47,878 --> 00:09:52,633
+最後需要設定的部分是 SFT 訓練器配置
+
+405
+00:09:52,633 --> 00:09:56,846
+we need to set important hyperparameters here in order for SFT to work well.
+
+406
+00:09:52,633 --> 00:09:56,846
+我們需要在此設定重要的超參數才能讓 SFT 運作良好
+
+407
+00:09:56,971 --> 00:09:57,972
+So here are a few key parameters
+
+408
+00:09:56,971 --> 00:09:57,972
+以下是幾個關鍵參數
+
+409
+00:09:57,972 --> 00:09:58,180
+So here are a few key parameters
+
+410
+00:09:57,972 --> 00:09:58,180
+以下是幾個關鍵參數
+
+411
+00:09:58,180 --> 00:09:58,556
+So here are a few key parameters
+
+412
+00:09:58,180 --> 00:09:58,556
+以下是幾個關鍵參數
+
+413
+00:09:58,556 --> 00:10:01,475
+so we usually set during the SFT procedure.
+
+414
+00:09:58,556 --> 00:10:01,475
+因此我們通常在 SFT 程序中設定
+
+415
+00:10:01,475 --> 00:10:04,604
+The first one is a learning rate which is then the learning rate
+
+416
+00:10:01,475 --> 00:10:04,604
+第一個是學習率，也就是學習率
+
+417
+00:10:04,604 --> 00:10:05,354
+for training.
+
+418
+00:10:04,604 --> 00:10:05,354
+用於訓練。
+
+419
+00:10:05,354 --> 00:10:08,357
+And usually you need to play with this learning rate a lot
+
+420
+00:10:05,354 --> 00:10:08,357
+通常你需要花很多時間調整這個學習率
+
+421
+00:10:08,399 --> 00:10:12,278
+to figure out what's the best learning rate for your own dataset and model.
+
+422
+00:10:08,399 --> 00:10:12,278
+找出最適合你的資料集和模型的學習率。
+
+423
+00:10:12,612 --> 00:10:15,239
+And there are also number of training epochs. Here,
+
+424
+00:10:12,612 --> 00:10:15,239
+還有訓練的迭代次數。在這裡，
+
+425
+00:10:15,239 --> 00:10:18,659
+we set that to be one to speed up the whole process.
+
+426
+00:10:15,239 --> 00:10:18,659
+我們設定為一次以加快整個流程。
+
+427
+00:10:19,035 --> 00:10:22,538
+If you want to train on the dataset for multiple times,
+
+428
+00:10:19,035 --> 00:10:22,538
+如果你想對資料集進行多次訓練，
+
+429
+00:10:22,872 --> 00:10:25,666
+you can set that to be two or even higher.
+
+430
+00:10:22,872 --> 00:10:25,666
+你可以將其設定為二或甚至更高。
+
+431
+00:10:25,666 --> 00:10:27,793
+And then the next two, per device
+
+432
+00:10:25,666 --> 00:10:27,793
+接著接下來的兩個，每個裝置的
+
+433
+00:10:27,793 --> 00:10:30,796
+train batch size and gradient accumulation steps
+
+434
+00:10:27,793 --> 00:10:30,796
+訓練批次大小和梯度累積步驟
+
+435
+00:10:31,088 --> 00:10:33,132
+are two important factors to determine your effective total batch size.
+
+436
+00:10:31,088 --> 00:10:33,132
+是決定你有效總批次大小的兩個重要因素。
+
+437
+00:10:33,132 --> 00:10:35,176
+are two important factors to determine your effective total batch size.
+
+438
+00:10:33,132 --> 00:10:35,176
+是決定你有效總批次大小的兩個重要因素。
+
+439
+00:10:35,426 --> 00:10:40,264
+So the per-device trained batch size is the batch size for each device or GPU.
+
+440
+00:10:35,426 --> 00:10:40,264
+因此，每個裝置的訓練批次大小就是指每個裝置或 GPU 的批次大小。
+
+441
+00:10:40,473 --> 00:10:42,058
+If you have eight GPUs and two
+
+442
+00:10:40,473 --> 00:10:42,058
+如果你有八個 GPU 和兩個
+
+443
+00:10:42,058 --> 00:10:43,059
+If you have eight GPUs and two
+
+444
+00:10:42,058 --> 00:10:43,059
+如果你有八個 GPU 和兩個
+
+445
+00:10:43,059 --> 00:10:47,271
+set per-device trained batch size to be two then your effective batch size
+
+446
+00:10:43,059 --> 00:10:47,271
+將每個裝置的訓練批次大小設為二，那麼你的有效批次大小
+
+447
+00:10:47,605 --> 00:10:51,067
+without going to an accumulation would be two times eight,
+
+448
+00:10:47,605 --> 00:10:51,067
+在不進行累積的情況下就會是二乘以八，
+
+449
+00:10:51,067 --> 00:10:55,237
+which is 16. And gradient accumulation step will be the number of steps
+
+450
+00:10:51,067 --> 00:10:55,237
+這個值是 16。而梯度累積步數代表的是
+
+451
+00:10:55,404 --> 00:10:56,822
+before performing a gradient descent, which means that this eight
+
+452
+00:10:55,404 --> 00:10:56,822
+在執行梯度下降前所需的步數，也就是說這個 8
+
+453
+00:10:56,822 --> 00:10:59,116
+before performing a gradient descent, which means that this eight
+
+454
+00:10:56,822 --> 00:10:59,116
+在執行梯度下降前所需的步數，也就是說這個 8
+
+455
+00:10:59,116 --> 00:11:02,787
+will also be multiplied with the per device trained batch size
+
+456
+00:10:59,116 --> 00:11:02,787
+還會與每個設備的訓練批次大小相乘
+
+457
+00:11:02,912 --> 00:11:06,123
+with the train number of GPUs, you have to fully determine the total batch size.
+
+458
+00:11:02,912 --> 00:11:06,123
+根據訓練使用的 GPU 數量，你必須完全確定總批次大小。
+
+459
+00:11:06,123 --> 00:11:07,583
+with the train number of GPUs, you have to fully determine the total batch size.
+
+460
+00:11:06,123 --> 00:11:07,583
+根據訓練使用的 GPU 數量，你必須完全確定總批次大小。
+
+461
+00:11:07,750 --> 00:11:10,878
+In our case, because we only have one CPU
+
+462
+00:11:07,750 --> 00:11:10,878
+在我們的案例中，因為我們只有一個 CPU
+
+463
+00:11:11,295 --> 00:11:15,675
+and the per-device trained by size one, the gradient accumulation step is eight,
+
+464
+00:11:11,295 --> 00:11:15,675
+且每個設備的訓練批次大小為一，梯度累積步驟為八，
+
+465
+00:11:16,008 --> 00:11:20,680
+so the final effective batch size is one times one times eight, which is eight.
+
+466
+00:11:16,008 --> 00:11:20,680
+所以最終的有效批次大小是 1 乘以 1 乘以 8，也就是 8。
+
+467
+00:11:21,138 --> 00:11:24,058
+If you set the per-device trained by size to be larger,
+
+468
+00:11:21,138 --> 00:11:24,058
+如果你將每個裝置的訓練批次大小設得更大，
+
+469
+00:11:24,058 --> 00:11:26,977
+then usually you would need more memory on each GPU.
+
+470
+00:11:24,058 --> 00:11:26,977
+通常就需要每個 GPU 有更多記憶體。
+
+471
+00:11:26,977 --> 00:11:30,940
+That's why we sometimes need gradient accumulation steps, which tries
+
+472
+00:11:26,977 --> 00:11:30,940
+這就是為什麼我們有時需要梯度累積步驟，它試圖
+
+473
+00:11:30,940 --> 00:11:34,694
+to effectively increase the batch size without increasing the memory usage.
+
+474
+00:11:30,940 --> 00:11:34,694
+在不增加記憶體使用量的情況下有效提升批次大小。
+
+475
+00:11:34,944 --> 00:11:38,989
+Next, there is one additional functionality of gradient checkpoint,
+
+476
+00:11:34,944 --> 00:11:38,989
+接著，梯度檢查點還有一項額外功能，
+
+477
+00:11:39,031 --> 00:11:42,201
+which, when enabled, can help reduce the GPU
+
+478
+00:11:39,031 --> 00:11:42,201
+當啟用時，可以透過跳過部分激活值
+
+479
+00:11:42,368 --> 00:11:44,286
+by skipping some of the activations.
+
+480
+00:11:42,368 --> 00:11:44,286
+來降低 GPU 負載。
+
+481
+00:11:44,286 --> 00:11:45,913
+And here we set that to be false.
+
+482
+00:11:44,286 --> 00:11:45,913
+而我們在這裡將其設為 false。
+
+483
+00:11:45,913 --> 00:11:48,666
+And if you see auto memory, tweaking that to be true
+
+484
+00:11:45,913 --> 00:11:48,666
+如果你看到 auto memory，將其調整為 true
+
+485
+00:11:48,666 --> 00:11:51,085
+might be one of the first thing you want to try here.
+
+486
+00:11:48,666 --> 00:11:51,085
+可能是你在這裡首先想嘗試的事情之一。
+
+487
+00:11:51,085 --> 00:11:53,963
+And finally, the logging step will be the frequency
+
+488
+00:11:51,085 --> 00:11:53,963
+最後，logging step 將會是頻率
+
+489
+00:11:53,963 --> 00:11:55,464
+of logging the training process.
+
+490
+00:11:53,963 --> 00:11:55,464
+記錄訓練過程
+
+491
+00:11:55,464 --> 00:11:56,382
+And we'll see later
+
+492
+00:11:55,464 --> 00:11:56,382
+稍後我們將會看到
+
+493
+00:11:56,382 --> 00:11:59,844
+how this can affect the different outputs of the training process.
+
+494
+00:11:56,382 --> 00:11:59,844
+這將如何影響訓練過程中的不同輸出結果
+
+495
+00:12:00,177 --> 00:12:04,724
+After setting up all the hyperparameters here, we're ready to kick off the training
+
+496
+00:12:00,177 --> 00:12:04,724
+設定完所有超參數後，我們就可以開始訓練了
+
+497
+00:12:05,057 --> 00:12:08,602
+using SFT trainer where we'll put in the model
+
+498
+00:12:05,057 --> 00:12:08,602
+使用 SFT 訓練器，我們將把模型
+
+499
+00:12:08,644 --> 00:12:12,356
+a SFT config as arguments, the training dataset we prepared
+
+500
+00:12:08,644 --> 00:12:12,356
+與準備好的訓練資料集一起作為 SFT 配置的參數輸入
+
+501
+00:12:12,356 --> 00:12:15,401
+before, and the tokenizer as a processing class.
+
+502
+00:12:12,356 --> 00:12:15,401
+之前，以及作為處理類別的 tokenizer。
+
+503
+00:12:15,526 --> 00:12:17,278
+Then we can kick off the training here.
+
+504
+00:12:15,526 --> 00:12:17,278
+接著我們就可以在這裡開始訓練。
+
+505
+00:12:17,278 --> 00:12:20,740
+Let's now run the SFT trainer and begin training.
+
+506
+00:12:17,278 --> 00:12:20,740
+現在讓我們執行 SFT trainer 並開始訓練。
+
+507
+00:12:21,240 --> 00:12:23,993
+You'll see there will be a progress bar showing
+
+508
+00:12:21,240 --> 00:12:23,993
+你會看到進度條顯示
+
+509
+00:12:23,993 --> 00:12:26,954
+the progress of training where we're training for one epoch.
+
+510
+00:12:23,993 --> 00:12:26,954
+我們正在進行一個訓練週期的進度。
+
+511
+00:12:27,163 --> 00:12:30,958
+And since we're only training 100 samples and the batch size is eight,
+
+512
+00:12:27,163 --> 00:12:30,958
+由於我們只訓練 100 個樣本，且批次大小為 8，
+
+513
+00:12:31,333 --> 00:12:34,837
+so the total steps of gradient descent is 13.
+
+514
+00:12:31,333 --> 00:12:34,837
+所以梯度下降的總步數是 13 步。
+
+515
+00:12:35,171 --> 00:12:35,546
+It will take in a scale of minutes to train the small model on 100 samples
+
+516
+00:12:35,171 --> 00:12:35,546
+在 100 個樣本上訓練這個小型模型，大約需要幾分鐘的時間。
+
+517
+00:12:35,546 --> 00:12:40,546
+It will take in a scale of minutes to train the small model on 100 samples
+
+518
+00:12:35,546 --> 00:12:40,546
+在 100 個樣本上訓練這個小型模型，大約需要幾分鐘的時間。
+
+519
+00:12:41,051 --> 00:12:44,054
+here. Now the SFT training is complete.
+
+520
+00:12:41,051 --> 00:12:44,054
+現在監督式微調(SFT)訓練已完成
+
+521
+00:12:44,180 --> 00:12:48,142
+Though it's trained on a smaller model with only a 100 samples,
+
+522
+00:12:44,180 --> 00:12:48,142
+雖然這只是用 100 個樣本訓練的小型模型
+
+523
+00:12:48,476 --> 00:12:52,688
+so one won't expect us to have an extremely well performance.
+
+524
+00:12:48,476 --> 00:12:52,688
+所以別期待會有非常出色的表現
+
+525
+00:12:52,855 --> 00:12:56,025
+Now, let's test the incomplete SFT training results.
+
+526
+00:12:52,855 --> 00:12:56,025
+現在，讓我們測試未完成的 SFT 訓練結果。
+
+527
+00:12:56,358 --> 00:12:59,653
+We test the model by filling in the SFT
+
+528
+00:12:56,358 --> 00:12:59,653
+我們透過填入 SFT
+
+529
+00:12:59,695 --> 00:13:03,532
+training model as arguments and see how it performs on the questions
+
+530
+00:12:59,695 --> 00:13:03,532
+訓練模型作為參數來測試，並觀察它在我們準備的
+
+531
+00:13:03,532 --> 00:13:04,325
+we prepare here.
+
+532
+00:13:03,532 --> 00:13:04,325
+問題上的表現如何。
+
+533
+00:13:04,325 --> 00:13:05,326
+You might see that
+
+534
+00:13:04,325 --> 00:13:05,326
+你可能會發現
+
+535
+00:13:05,326 --> 00:13:09,497
+for the inputs here, the model is able to give reasonable responses.
+
+536
+00:13:05,326 --> 00:13:09,497
+對於這裡的輸入，模型能夠給出合理的回應。
+
+537
+00:13:09,789 --> 00:13:11,874
+Though sometimes it can be repetitive.
+
+538
+00:13:09,789 --> 00:13:11,874
+雖然有時候可能會顯得重複。
+
+539
+00:13:11,874 --> 00:13:14,627
+Sometimes it not be able to give the right answer.
+
+540
+00:13:11,874 --> 00:13:14,627
+有時候它可能無法給出正確答案。
+
+541
+00:13:14,627 --> 00:13:17,630
+This is mostly because first the model is small.
+
+542
+00:13:14,627 --> 00:13:17,630
+這主要是因為首先模型的規模較小。
+
+543
+00:13:17,630 --> 00:13:20,800
+Second, the dataset we train on is only 100 samples,
+
+544
+00:13:17,630 --> 00:13:20,800
+其次，我們訓練的數據集僅有 100 個樣本，
+
+545
+00:13:21,008 --> 00:13:24,094
+which may not be enough to update the model to a good shape.
+
+546
+00:13:21,008 --> 00:13:24,094
+可能不足以讓模型調整到理想的狀態。
+
+547
+00:13:24,136 --> 00:13:25,387
+We did this mostly due to access of limited resources
+
+548
+00:13:24,136 --> 00:13:25,387
+我們這樣做主要是受限於資源的取得
+
+549
+00:13:25,387 --> 00:13:26,013
+We did this mostly due to access of limited resources
+
+550
+00:13:25,387 --> 00:13:26,013
+我們這麼做主要是因為資源有限
+
+551
+00:13:26,013 --> 00:13:26,931
+We did this mostly due to access of limited resources
+
+552
+00:13:26,013 --> 00:13:26,931
+我們這麼做主要是因為資源有限
+
+553
+00:13:26,931 --> 00:13:27,848
+We did this mostly due to access of limited resources
+
+554
+00:13:26,931 --> 00:13:27,848
+我們這麼做主要是因為資源有限
+
+555
+00:13:28,224 --> 00:13:32,186
+and we'd encourage you and train and try on a Qwen3-0.6B
+
+556
+00:13:28,224 --> 00:13:32,186
+我們鼓勵您訓練並嘗試使用 Qwen3-0.6B
+
+557
+00:13:32,186 --> 00:13:35,981
+model on our own GPU on the full dataset to reproduce
+
+558
+00:13:32,186 --> 00:13:35,981
+在完整數據集上使用我們自己的 GPU 訓練模型以重現
+
+559
+00:13:35,981 --> 00:13:38,317
+our previously illustrated results here.
+
+560
+00:13:35,981 --> 00:13:38,317
+我們先前在此展示的結果。
+
+561
+00:13:38,317 --> 00:13:39,276
+In this lesson,
+
+562
+00:13:38,317 --> 00:13:39,276
+本課程將示範如何對語言模型進行監督式微調（SFT），使用小型資料集與模型進行實務演練。流程包含在標註過的對話資料上訓練基礎語言模型，以提升其對話流暢度。課程接著會測試..
+
+563
+00:13:39,276 --> 00:13:39,902
+we have trained turning a base model into an intruct model
+
+564
+00:13:39,276 --> 00:13:39,902
+我們已將基礎模型訓練成指令模型
+
+565
+00:13:39,902 --> 00:13:40,611
+we have trained turning a base model into an intruct model
+
+566
+00:13:39,902 --> 00:13:40,611
+我們已將基礎模型訓練成指令模型
+
+567
+00:13:40,611 --> 00:13:43,572
+we have trained turning a base model into an intruct model
+
+568
+00:13:40,611 --> 00:13:43,572
+我們已將基礎模型訓練成指令模型
+
+569
+00:13:43,572 --> 00:13:48,285
+that can chat with user based on Qwen3-0.6B based model.
+
+570
+00:13:43,572 --> 00:13:48,285
+該模型能基於 Qwen3-0.6B 架構與使用者對話
+
+571
+00:13:48,619 --> 00:13:51,580
+We also tuned and go through
+
+572
+00:13:48,619 --> 00:13:51,580
+我們也完成了微調並走完
+
+573
+00:13:51,580 --> 00:13:54,416
+the whole SFT procedure with a smaller HuggingFace
+
+574
+00:13:51,580 --> 00:13:54,416
+整個使用較小 HuggingFace 資料集的 SFT 流程
+
+575
+00:13:54,416 --> 00:13:54,750
+small
+
+576
+00:13:54,416 --> 00:13:54,750
+小型的
+
+577
+00:13:54,750 --> 00:13:55,501
+LLM model.
+
+578
+00:13:54,750 --> 00:13:55,501
+LLM 模型。
+
+579
+00:13:55,501 --> 00:13:58,879
+In the next lesson, we'll be going over some basics of DPO.
+
+580
+00:13:55,501 --> 00:13:58,879
+在下一堂課中，我們將講解 DPO 的一些基礎知識。
+
+581
+00:15:09,450 --> 00:15:11,785
+This concludes the lesson three
+
+582
+00:15:09,450 --> 00:15:11,785
+第三課到此結束
+
+583
+00:15:11,785 --> 00:15:14,788
+for safety in practice.
+
+584
+00:15:11,785 --> 00:15:14,788
+在實務中確保安全
+
+585
+00:28:29,666 --> 00:28:31,209
+Now let's have a look
+
+586
+00:28:29,666 --> 00:28:31,209
+現在讓我們來看看
+
+587
+00:28:31,209 --> 00:28:34,212
+at the incomplete, safety training results.
+
+588
+00:28:31,209 --> 00:28:34,212
+這些不完整的安全訓練結果
+
+589
+00:28:34,713 --> 00:28:37,716
+We directly test a model on a safety trainer
+
+590
+00:28:34,713 --> 00:28:37,716
+我們直接在安全訓練器上測試模型
+
+591
+00:28:38,007 --> 00:28:42,137
+and observe the best model output after safety.
+
+592
+00:28:38,007 --> 00:28:42,137
+並在安全檢查後觀察最佳模型輸出。
+
+593
+00:28:43,722 --> 00:28:45,765
+So when I see that
+
+594
+00:28:43,722 --> 00:28:45,765
+所以當我看到
+
+595
+00:28:45,765 --> 00:28:48,393
+it's giving a reasonable output,
+
+596
+00:28:45,765 --> 00:28:48,393
+它給出了合理的輸出，
+
+597
+00:28:48,393 --> 00:28:51,396
+except for that, in some cases it might be repetitive.
+
+598
+00:28:48,393 --> 00:28:51,396
+除了在某些情況下可能會出現重複內容。
+
+599
+00:28:51,688 --> 00:28:55,150
+In some cases it might not be that great in S3.
+
+600
+00:28:51,688 --> 00:28:55,150
+在某些情況下，S3 的表現可能不盡理想。
+
+601
+00:28:55,358 --> 00:28:56,609
+Gives a query.
+
+602
+00:28:55,358 --> 00:28:56,609
+給出一個查詢。
+
+603
+00:28:56,609 --> 00:29:00,029
+This is because first is a relatively small model and second
+
+604
+00:28:56,609 --> 00:29:00,029
+這是因為首先這是一個相對較小的模型，其次
+
+605
+00:29:00,029 --> 00:29:01,990
+is only 100 samples.
+
+606
+00:29:00,029 --> 00:29:01,990
+僅有 100 個樣本。
+
+607
+00:29:01,990 --> 00:29:04,993
+So it still doesn't know how to respond properly.
+
+608
+00:29:01,990 --> 00:29:04,993
+所以它仍然不知道如何正確回應。
+
+609
+00:29:05,952 --> 00:29:09,581
+So for further training I'd recommend you try. Try.
+
+610
+00:29:05,952 --> 00:29:09,581
+所以我建議你可以試試看進一步訓練。試試看。
+
+611
+00:29:09,581 --> 00:29:13,710
+It was 3.6 B model on the fourth
+
+612
+00:29:09,581 --> 00:29:13,710
+那是第四代的 3.6B 模型
+
+613
+00:29:13,710 --> 00:29:16,713
+training dataset to reproduce my previous results.
+
+614
+00:29:13,710 --> 00:29:16,713
+訓練資料集來重現我之前的結果。
+
+615
+00:29:17,338 --> 00:29:20,341
+Oh, actually, before that you can see,
+
+616
+00:29:17,338 --> 00:29:20,341
+噢，其實在那之前你可以看到，
+
+617
+00:29:23,094 --> 00:29:25,263
+we did this because of the limited
+
+618
+00:29:23,094 --> 00:29:25,263
+我們這麼做是因為有限的
+
+619
+00:29:26,431 --> 00:29:26,973
+resources.
+
+620
+00:29:26,431 --> 00:29:26,973
+資源
+
+621
+00:29:26,973 --> 00:29:30,727
+Okay, on the platform, but be free to go
+
+622
+00:29:26,973 --> 00:29:30,727
+好的，在平台上，但請自由行動
+
+623
+00:29:30,727 --> 00:29:33,730
+with a larger model and a larger dataset.
+
+624
+00:29:30,727 --> 00:29:33,730
+使用更大的模型和更大的數據集。
+
+625
+00:29:33,730 --> 00:29:34,939
+Okay. Makes sense.
+
+626
+00:29:33,730 --> 00:29:34,939
+好的，明白了。
+
+627
+00:29:34,939 --> 00:29:36,983
+Yeah. Oh, okay. Start from that, then.
+
+628
+00:29:34,939 --> 00:29:36,983
+好的，喔，了解。那就從那邊開始吧。
+
+629
+00:29:36,983 --> 00:29:37,692
+We did it.
+
+630
+00:29:36,983 --> 00:29:37,692
+我們做到了。
+
+631
+00:29:37,692 --> 00:29:38,234
+I'll start from.
+
+632
+00:29:37,692 --> 00:29:38,234
+我從這邊開始。
+
+633
+00:29:38,234 --> 00:29:41,196
+We did, or should I we do this?
+
+634
+00:29:38,234 --> 00:29:41,196
+我們做到了，或者我該說我們正在做這件事？
+
+635
+00:29:41,196 --> 00:29:41,905
+I think yes.
+
+636
+00:29:41,196 --> 00:29:41,905
+我想是的。
+
+637
+00:29:41,905 --> 00:29:44,783
+You say if you say that editor.
+
+638
+00:29:41,905 --> 00:29:44,783
+你說如果你說那位編輯。
+
+639
+00:29:44,783 --> 00:29:47,702
+So. Okay, after you show the result and,
+
+640
+00:29:44,783 --> 00:29:47,702
+所以。好的，在你展示結果之後，
+
+641
+00:29:47,702 --> 00:29:50,246
+talk about, you know, they are relatively boring.
+
+642
+00:29:47,702 --> 00:29:50,246
+說真的，你知道的，這些內容其實蠻無聊的。
+
+643
+00:29:50,246 --> 00:29:52,499
+Yeah.
+
+644
+00:29:50,246 --> 00:29:52,499
+是啊。
+
+645
+00:29:52,499 --> 00:29:55,502
+It's actually continuation of the present event.
+
+646
+00:29:52,499 --> 00:29:55,502
+這其實是當下事件的延續。
+
+647
+00:29:56,628 --> 00:29:58,087
+Okay.
+
+648
+00:29:56,628 --> 00:29:58,087
+好的。
+
+649
+00:29:58,087 --> 00:30:00,131
+Okay. We do it from. Let's do it. Okay.
+
+650
+00:29:58,087 --> 00:30:00,131
+好。我們從...開始吧。來做吧。好。
+
+651
+00:30:00,131 --> 00:30:05,131
+See if this part is so tricky that we don't want to be so apologetic.
+
+652
+00:30:00,131 --> 00:30:05,131
+看看這部分是否棘手到我們不需要如此抱歉。
+
+653
+00:30:07,680 --> 00:30:10,350
+But at the same time, you know, keeping the excitement.
+
+654
+00:30:07,680 --> 00:30:10,350
+但同時，你知道的，要保持興奮感。
+
+655
+00:30:10,350 --> 00:30:12,477
+Yes. This is so powerful.
+
+656
+00:30:10,350 --> 00:30:12,477
+沒錯。這真是太強大了。
+
+657
+00:30:12,477 --> 00:30:13,436
+Powerful.
+
+658
+00:30:12,477 --> 00:30:13,436
+強大。
+
+659
+00:30:13,436 --> 00:30:16,439
+But it's not for us because of the limitation.
+
+660
+00:30:13,436 --> 00:30:16,439
+但由於限制，這對我們來說並不可行。
+
+661
+00:30:17,357 --> 00:30:18,691
+Okay.
+
+662
+00:30:17,357 --> 00:30:18,691
+好的。
+
+663
+00:30:18,691 --> 00:30:19,442
+So, yeah.
+
+664
+00:30:18,691 --> 00:30:19,442
+所以，沒錯。
+
+665
+00:30:21,486 --> 00:30:23,112
+Okay, we're doing the testing part.
+
+666
+00:30:21,486 --> 00:30:23,112
+好的，我們正在進行測試部分。
+
