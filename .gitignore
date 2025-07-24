@@ -1,0 +1,25 @@
+# =============================
+# Post-training_of_LLMs 課程專用
+# =============================
+# 已上傳過但新版不再上傳的文字檔案
+Post-training_of_LLMs/L3.pdf
+Post-training_of_LLMs/Basics of DPO.txt
+Post-training_of_LLMs/Basics of Online RL.txt
+Post-training_of_LLMs/Basics of SFT.txt
+Post-training_of_LLMs/DPO in Practice.txt
+Post-training_of_LLMs/Introduction to Post-Training.txt
+Post-training_of_LLMs/Online RL in Practice.txt
+Post-training_of_LLMs/SFT in Practice.txt
+
+# 模型資料夾（檔案很大，請勿上傳）
+Post-training_of_LLMs/models/
+Post-training_of_LLMs/Qwen3-0.6B-Base/
+Post-training_of_LLMs/Qwen3-0.6B-SFT/
+
+# 訓練過程輸出資料夾（通常很大，請勿上傳）
+Post-training_of_LLMs/sft_output/
+Post-training_of_LLMs/trainer_output/
+
+# =============================
+# 其他課程請依需求自行調整
+# ============================= 
